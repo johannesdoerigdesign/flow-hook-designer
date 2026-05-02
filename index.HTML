@@ -1,0 +1,6291 @@
+<!doctype html>
+<html lang="de">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Flow Hook Designer</title>
+  <style>
+    :root {
+      --bg: #f5f1ea;
+      --panel: #fffaf2;
+      --ink: #2d2926;
+      --muted: #7a7168;
+      --line: #ded5c9;
+      --accent: #a45858;
+      --accent-dark: #783f3f;
+      --green: #3ba76d;
+      --blue: #4b7bec;
+      --danger: #c64646;
+      --shadow: 0 18px 45px rgba(0, 0, 0, .08);
+      --leftbar-width: 280px;
+      --rightbar-width: 240px;
+      --topbar-height: 54px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+    }
+
+    body {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: var(--leftbar-width) 1fr var(--rightbar-width);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    button,
+    select,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 12px;
+      padding: 9px 12px;
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--ink);
+      cursor: pointer;
+      transition: .15s ease;
+      touch-action: manipulation;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, .08);
+    }
+
+    button.primary {
+      color: #fff;
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    button.danger {
+      color: #fff;
+      background: var(--danger);
+      border-color: var(--danger);
+    }
+
+    h1 {
+      font-size: 20px;
+      line-height: 1.1;
+      margin: 0 0 6px;
+    }
+
+    h2 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .11em;
+      color: var(--muted);
+      margin: 18px 0 9px;
+    }
+
+    label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    input[type="checkbox"] {
+      vertical-align: middle;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Layout panels */
+    .leftbar,
+    .rightbar {
+      background: var(--panel);
+      z-index: 2;
+    }
+
+    .leftbar {
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      overflow: hidden;
+      border-right: 1px solid var(--line);
+    }
+
+    .left-header {
+      flex: 0 0 auto;
+      padding: 18px 18px 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .palette-scroll {
+      flex: 1 1 auto;
+      overflow: auto;
+      overscroll-behavior: contain;
+      padding: 12px 18px 18px;
+    }
+
+    .palette-scroll>div {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .palette-scroll h2 {
+      grid-column: 1 / -1;
+      margin-top: 14px;
+      margin-bottom: 2px;
+    }
+
+    .rightbar {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 18px 14px;
+      overflow: auto;
+      border-left: 1px solid var(--line);
+    }
+
+    .rightbar textarea,
+    .bom-output {
+      width: 100%;
+      min-height: 230px;
+      flex: 1 1 auto;
+      resize: none;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 14px;
+      padding: 12px;
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--ink);
+      white-space: pre-line;
+    }
+
+    #exportDesignBtn,
+    #importDesignBtn,
+    #copyBtn {
+      width: 100%;
+    }
+
+    main {
+      position: relative;
+      padding-top: var(--topbar-height);
+      overflow: hidden;
+      touch-action: none;
+      background:
+        radial-gradient(circle at 1px 1px, rgba(45, 41, 38, .12) 1px, transparent 0) 0 0/50px 50px,
+        linear-gradient(180deg, #faf7f1, #eee7dd);
+    }
+
+    #stage {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: default;
+    }
+
+    /* Top toolbar */
+    .topbar {
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: var(--topbar-height);
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    .toolbar-frame {
+      pointer-events: auto;
+      height: var(--topbar-height);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      touch-action: pan-x;
+      background: rgba(255, 250, 242, .96);
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, .06);
+      backdrop-filter: blur(8px);
+    }
+
+    .toolbar-frame::-webkit-scrollbar {
+      display: none;
+    }
+
+    .toolbar-frame>* {
+      flex: 0 0 auto;
+    }
+
+    .toolbar-frame button,
+    .toolbar-frame select {
+      height: 36px;
+      touch-action: pan-x;
+    }
+
+    .example-inline {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
+    }
+
+    .example-inline select,
+    #exampleSelect {
+      min-width: 150px;
+      max-width: 210px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0 10px;
+      background: #fff;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .grid-mini {
+      margin-left: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    /* Palette parts */
+    .part {
+      user-select: none;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 7px;
+      justify-items: center;
+      align-items: center;
+      min-height: 104px;
+      padding: 9px 7px;
+      margin-bottom: 8px;
+      text-align: center;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 16px;
+      cursor: grab;
+      transition: .15s ease;
+    }
+
+    .part:hover {
+      transform: scale(1.035);
+      border-color: #c9b8a7;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, .08);
+    }
+
+    .part:active {
+      cursor: grabbing;
+    }
+
+    .thumb {
+      width: 64px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f4ece3;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .thumb svg {
+      max-width: 58px;
+      max-height: 58px;
+      width: auto;
+      height: auto;
+    }
+
+    .part-name {
+      font-weight: 700;
+      font-size: 11px;
+      line-height: 1.15;
+    }
+
+    .part-meta {
+      display: none;
+    }
+
+    .palette-divider {
+      height: 1px;
+      margin: 6px 10px;
+      background: #ccc;
+      border-radius: 1px;
+    }
+
+    /* Color and mount dropdowns */
+    .color-dropdown,
+    .mount-dropdown {
+      position: relative;
+    }
+
+    .sidebar-color-dropdown {
+      margin-top: 10px;
+    }
+
+    .color-menu-btn,
+    .sidebar-color-btn {
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 10px;
+    }
+
+    .sidebar-color-btn,
+    #mountConfigMenuBtn {
+      width: 100%;
+      height: 42px;
+      justify-content: space-between;
+      text-wrap-mode: wrap;
+    }
+
+    .color-preview {
+      width: 24px;
+      height: 18px;
+      border-radius: 2px;
+      border: 1px solid #0002;
+      background: #a45858;
+      flex: 0 0 auto;
+    }
+
+    .palette-container,
+    .mount-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: max-content;
+      min-width: 140px;
+      max-width: min(260px, 90vw);
+      padding: 8px;
+      box-sizing: border-box;
+      overflow-wrap: break-word;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .14);
+    }
+
+    .mount-menu {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .palette-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .palette-label {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .palette-color {
+      width: 20px;
+      height: 20px;
+      border: 1px solid #0002;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .palette-color:hover {
+      transform: scale(1.1);
+    }
+
+    .palette-custom-btn,
+    .mount-menu button {
+      width: 100%;
+      height: auto;
+      min-height: 32px;
+      padding: 6px 8px;
+      white-space: normal;
+      text-align: left;
+    }
+
+    .hidden-color-input {
+      position: absolute;
+      width: 44px;
+      height: 36px;
+      opacity: 0.01;
+      pointer-events: auto;
+    }
+
+    .mount-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #mountConfigPreview {
+      width: auto;
+      min-width: 72px;
+      height: auto;
+      border-radius: 999px;
+      border: 1px solid #0002;
+      background: #f4ece3;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 8px;
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--muted);
+      text-wrap-mode: wrap;
+    }
+
+    #mountConfigMenu {
+      width: auto;
+    }
+
+    .mount-info-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: auto;
+      min-width: 20px;
+      height: 70%;
+      padding: 0 4px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .mount-info-link:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* Selected object action bar */
+    .canvas-actions {
+      position: absolute;
+      top: calc(var(--topbar-height) + 12px);
+      right: 16px;
+      z-index: 6;
+      display: none;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      max-width: calc(100% - 32px);
+      padding: 8px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      touch-action: pan-x;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255, 250, 242, .94);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .floating-palette {
+      position: fixed !important;
+      top: 0;
+      left: 0;
+      width: 140px !important;
+      max-width: calc(100vw - 16px) !important;
+      z-index: 99999 !important;
+    }
+
+    .canvas-actions.visible {
+      display: flex;
+    }
+
+    .canvas-actions::-webkit-scrollbar {
+      display: none;
+    }
+
+    .canvas-actions>* {
+      flex: 0 0 auto;
+    }
+
+    .canvas-actions button,
+    .canvas-actions select,
+    .canvas-actions .color-dropdown {
+      touch-action: pan-x;
+    }
+
+    .canvas-actions .palette-container {
+      top: calc(100% + 6px);
+      max-width: min(260px, calc(100vw - 32px));
+    }
+
+    /* SVG canvas layers */
+    .placed-shape .shape-svg {
+      filter: drop-shadow(0 7px 10px rgba(0, 0, 0, .12));
+    }
+
+    .shape-outline {
+      display: none;
+      fill: none;
+      stroke: none;
+      pointer-events: none;
+    }
+
+    .placed-shape.selected .shape-outline {
+      display: block;
+      fill: none;
+      stroke: var(--blue);
+      stroke-width: 2;
+      stroke-dasharray: 5 4;
+      pointer-events: none;
+    }
+
+    .snap-point {
+      pointer-events: none;
+      stroke: #fff;
+      stroke-width: 2;
+    }
+
+    .snap-open {
+      fill: var(--blue);
+    }
+
+    .snap-active {
+      fill: #222;
+    }
+
+    .snap-valid {
+      fill: var(--green);
+    }
+
+    .ghost {
+      opacity: .72;
+      pointer-events: none;
+    }
+
+    .ghost.valid {
+      opacity: .86;
+    }
+
+    .selection-rect {
+      fill: rgba(75, 123, 236, .10);
+      stroke: var(--blue);
+      stroke-width: 1.5;
+      stroke-dasharray: 6 4;
+      pointer-events: none;
+    }
+
+    .connection-line {
+      stroke: rgba(59, 167, 109, .5);
+      stroke-width: 3;
+      stroke-linecap: round;
+      pointer-events: none;
+    }
+
+    .drag-preview {
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: .9;
+      filter: drop-shadow(0 14px 24px rgba(0, 0, 0, .18));
+      transform: translate(-50%, -50%);
+    }
+
+    .drag-preview svg {
+      display: block;
+      overflow: visible;
+    }
+
+    body.palette-dragging,
+    body.palette-dragging .palette-scroll {
+      overflow: hidden !important;
+      overscroll-behavior: none !important;
+      touch-action: none;
+    }
+
+    body.drop-delete-active .leftbar {
+      outline: 3px dashed var(--danger);
+      outline-offset: -8px;
+      background: #fff1ef;
+    }
+
+    .selection-size-info {
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+      z-index: 7;
+
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 250, 242, .94);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .selection-size-info .muted {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    /* Responsive layout */
+    @media (max-width: 980px) {
+      :root {
+        --leftbar-width: 220px;
+        --rightbar-width: 210px;
+      }
+
+      .left-header,
+      .palette-scroll,
+      .rightbar {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
+      .toolbar-frame {
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+
+      button {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
+      .example-inline select,
+      #exampleSelect {
+        min-width: 120px;
+        max-width: 160px;
+      }
+    }
+
+    @media (max-width: 720px) {
+      :root {
+        --leftbar-width: 118px;
+        --rightbar-width: 128px;
+      }
+
+      h1 {
+        font-size: 14px;
+      }
+
+      h2 {
+        font-size: 10px;
+        letter-spacing: .06em;
+      }
+
+      .left-header,
+      .palette-scroll,
+      .rightbar {
+        padding-left: 6px;
+        padding-right: 6px;
+      }
+
+      .palette-scroll>div {
+        grid-template-columns: 1fr;
+      }
+
+      .part {
+        min-height: 82px;
+        padding: 6px 4px;
+      }
+
+      .thumb {
+        width: 52px;
+        height: 52px;
+      }
+
+      .thumb svg {
+        max-width: 48px;
+        max-height: 48px;
+      }
+
+      .part-name {
+        font-size: 10px;
+      }
+
+      .rightbar textarea,
+      .bom-output {
+        min-height: 180px;
+        font-size: 10px;
+        padding: 8px;
+      }
+
+      .canvas-actions {
+        top: calc(var(--topbar-height) + 8px);
+        right: 8px;
+        max-width: calc(100% - 16px);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <aside class="leftbar" id="leftbar">
+    <div class="left-header">
+      <h1>Flow Hook Designer</h1>
+
+      <div class="color-dropdown sidebar-color-dropdown">
+        <button id="globalMainColorMenuBtn" class="color-menu-btn sidebar-color-btn">
+          <span>Main Color</span>
+          <span id="globalMainColorPreview" class="color-preview"></span>
+        </button>
+        <div class="palette-container hidden" id="globalMainPalette"></div>
+        <input id="mainColorPicker" type="color" value="#a45858" class="hidden-color-input">
+      </div>
+
+      <div class="color-dropdown sidebar-color-dropdown">
+        <button id="globalHookColorMenuBtn" class="color-menu-btn sidebar-color-btn">
+          <span>Hook Color</span>
+          <span id="globalHookColorPreview" class="color-preview"></span>
+        </button>
+        <div class="palette-container hidden" id="globalHookPalette"></div>
+        <input id="hookColorPicker" type="color" value="#5b3434" class="hidden-color-input">
+      </div>
+
+
+    </div>
+    <div id="palette" class="palette-scroll"></div>
+  </aside>
+
+  <main id="canvasWrap">
+    <div class="topbar">
+      <div class="toolbar-frame">
+        <button id="undoBtn" title="Undo">Undo</button>
+        <button id="redoBtn" title="Redo">Redo</button>
+        <button id="clearBtn">Clear</button>
+        <button id="randomBtn">Random</button>
+        <div class="example-inline">
+          <select id="exampleSelect" title="Select Example"></select>
+          <button id="prevExampleBtn" title="Previous Example">◀</button>
+          <button id="nextExampleBtn" title="Next Example">▶</button>
+        </div>
+        <label class="grid-mini"><input id="gridToggle" type="checkbox" checked> Grid</label>
+        <button id="fitBtn">Center</button>
+      </div>
+    </div>
+
+    <div class="canvas-actions" id="canvasActions">
+      <div class="color-dropdown">
+        <button id="mainColorMenuBtn" class="color-menu-btn">
+          <span>Main</span>
+          <span id="mainColorPreview" class="color-preview"></span>
+        </button>
+        <div class="palette-container hidden" id="mainPalette"></div>
+        <input id="selectedMainColorPicker" type="color" value="#a45858" class="hidden-color-input">
+      </div>
+
+      <div class="color-dropdown">
+        <button id="hookColorMenuBtn" class="color-menu-btn">
+          <span>Hook</span>
+          <span id="hookColorPreview" class="color-preview"></span>
+        </button>
+        <div class="palette-container hidden" id="hookPalette"></div>
+        <input id="selectedHookColorPicker" type="color" value="#5b3434" class="hidden-color-input">
+      </div>
+
+      <button id="mirrorBtn" title="Mirror selected part">Mirror</button>
+      <button id="rotateBtn" title="Rotate selected part by 90°">90°</button>
+      <button id="rotate45Btn" title="Rotate selected part by 45°">45°</button>
+      <button id="duplicateBtn" title="Duplicate selected part">Duplicate</button>
+      <button id="deleteBtn" class="danger" title="Delete selection">Delete</button>
+    </div>
+
+    <div id="selectionSizeInfo" class="selection-size-info hidden"></div>
+
+    <svg id="stage" xmlns="http://www.w3.org/2000/svg">
+      <g id="viewport">
+        <g id="connectionsLayer"></g>
+        <g id="shapesLayer"></g>
+        <g id="snapLayer"></g>
+        <g id="ghostLayer"></g>
+        <g id="selectionLayer"></g>
+      </g>
+    </svg>
+  </main>
+
+  <section class="rightbar">
+    <h1>Input/Output</h1>
+
+
+    <button id="importDesignBtn">Import Design</button>
+    <button id="exportDesignBtn">Export Design</button>
+    <input id="importDesignInput" type="file" accept="application/json,.json,.txt" style="display:none">
+
+
+    <h2>Parts List</h2>
+    <div class="mount-dropdown sidebar-mount-dropdown">
+      <button id="mountConfigMenuBtn" class="color-menu-btn sidebar-color-btn">
+        <span>Wall Mount</span>
+        <span id="mountConfigPreview">Select Wall Mount</span>
+        <a class="mount-info-link"
+          href="https://makerworld.com/en/models/2632911-upgrade-kit-for-legos-speed-champions-gt3-rs#profileId-2907619:~:text=Description"
+          target="_blank" rel="noopener noreferrer" title="More information about wall mount options"
+          onclick="event.stopPropagation();">ⓘ</a>
+      </button>
+      <div class="mount-menu hidden" id="mountConfigMenu">
+        <button class="palette-custom-btn" data-mount-config="countersunk">
+          Wall Mount with Countersunk Screw
+        </button>
+        <button class="palette-custom-btn" data-mount-config="roundhead">
+          Wall Mount with Round Head Screw
+        </button>
+        <button class="palette-custom-btn" data-mount-config="tape">
+          Double-Sided Tape
+        </button>
+      </div>
+    </div>
+    <div id="bom" class="bom-output"></div>
+    <button id="copyBtn" class="primary">Copy Parts List</button>
+
+    <div style="display:none">
+      <strong id="partCount">0</strong>
+      <strong id="selectionCount">0</strong>
+      <strong id="connectionCount">0</strong>
+    </div>
+  </section>
+
+  <script>
+
+    const COLOR_PALETTES = [
+      {
+        name: "Pastel",
+        colors: ["#f6d6d6", "#f6e6d6", "#f6f3d6", "#d6f6e3", "#d6e6f6"]
+      },
+      {
+        name: "Nature",
+        colors: ["#fefae0", "#d2d0a0", "#a9b388", "#5f6f52", "#9E7859"]
+      },
+      {
+        name: "Ocean",
+        colors: ["#e3f2fd", "#bbe1fa", "#3282b8", "#0f4c75", "#1b262c"]
+      },
+      {
+        name: "Sunset",
+        colors: ["#f8cc30", "#fb9062", "#ee5d6c", "#ce4993", "#6a0d83"]
+      },
+      {
+        name: "Candy",
+        colors: ["#ff8fab", "#ffc6ff", "#bdb2ff", "#a0c4ff", "#caffbf"]
+      },
+      {
+        name: "Dark",
+        colors: ["#5b3434", "#3b2b2b", "#2b3b2b", "#2b2b3b", "#000000"]
+      },
+    ];
+
+    const PARTS = [
+      {
+        "id": "hook_3quarter_01",
+        "name": "Hook 3/4 Circle",
+        "category": "hook",
+        "svg": "haken3ViertelKreis.svg",
+        "width": 100,
+        "height": 100,
+        "hasScrewHoles": true,
+        "rotationStep": 90,
+        "snapPoints": [
+          { "id": "A", "x": 25, "y": 0, "direction": 180 },
+          { "id": "B", "x": 0, "y": 25, "direction": 90 }
+        ],
+        "viewBox": "-50 -50 100 100",
+        "svgInner": "<path style=\"stroke: rgb(0, 0, 0); stroke-width: 6.85486px; fill: rgb(164, 88, 88);\" transform=\"matrix(0.145882, 0, 0, 0.145882, -152.384937, -96.949442)\" d=\"M 1044.577 1007.485 A 342.743 342.743 0 1 1 1387.32 664.742 L 1044.577 664.742 Z\"/><ellipse style=\"stroke: rgb(0, 0, 0); fill: rgb(88, 44, 44);\" cx=\"-16.47\" cy=\"-16.47\" rx=\"7.53\" ry=\"7.53\"/>"
+      },
+      {
+        "id": "hook_halfcircle_01",
+        "name": "Hook Half Circle",
+        "category": "hook",
+        "svg": "hakenHalbkreis.svg",
+        "width": 100,
+        "height": 100,
+        "hasScrewHoles": true,
+        "rotationStep": 90,
+        "snapPoints": [
+          { "id": "A", "x": -25, "y": 0, "direction": 180 },
+          { "id": "B", "x": 25, "y": 0, "direction": 180 }
+        ],
+        "viewBox": "-50 -50 100 100",
+        "svgInner": "<path style=\"stroke: rgb(0, 0, 0); stroke-width: 6.85486px; fill: rgb(164, 88, 88);\" transform=\"matrix(0.145882, 0, 0, 0.145882, -152.384937, -96.949442)\" d=\"M 701.834 664.742 A 342.743 342.743 0 1 1 1387.32 664.742 L 1044.577 664.742 Z\"/><ellipse style=\"stroke: rgb(0, 0, 0); fill: rgb(88, 44, 44);\" cx=\"0\" cy=\"-22\" rx=\"7.53\" ry=\"7.53\"/>"
+      },
+      {
+        "id": "hook_fullcorner_01",
+        "name": "Hook Full Circle Corner",
+        "category": "hook",
+        "svg": "vollkreisMitEcke.svg",
+        "width": 100,
+        "height": 100,
+        "hasScrewHoles": true,
+        "rotationStep": 90,
+        "snapPoints": [
+          {
+            "id": "A",
+            "x": 50,
+            "y": 25,
+            "direction": 90
+          },
+          {
+            "id": "B",
+            "x": 25,
+            "y": 50,
+            "direction": 180
+          }
+        ],
+        "svgInner": "<defs><bx:export><bx:file format=\"svg\" path=\"Untitled 6.svg\"/></bx:export></defs><ellipse style=\"stroke: rgb(0, 0, 0); fill: rgb(164, 88, 88);\" cx=\"0\" cy=\"0\" rx=\"50\" ry=\"50\"/><rect width=\"50\" height=\"50\" style=\"stroke: rgb(0, 0, 0); fill: rgb(164, 88, 88);\"/><ellipse style=\"stroke: rgb(0, 0, 0); stroke-width: 0px; fill: rgb(164, 88, 88);\" cx=\"0\" cy=\"0\" rx=\"49.5\" ry=\"49.5\"/><ellipse style=\"stroke: rgb(0, 0, 0); fill: rgb(88, 44, 44);\" cx=\"0\" cy=\"0\" rx=\"7.5\" ry=\"7.5\"/>",
+        "viewBox": "-50 -50 100 100"
+      },
+      {
+        "id": "hook_square_01",
+        "name": "Hook Square",
+        "category": "hook",
+        "svg": "hakenQuadrat.svg",
+        "width": 50,
+        "height": 50,
+        "hasScrewHoles": true,
+        "rotationStep": 90,
+        "snapPoints": [
+          { "id": "A", "x": 0, "y": 25, "direction": 180 },
+          { "id": "B", "x": 0, "y": -25, "direction": 0 },
+          { "id": "C", "x": -25, "y": 0, "direction": 270 },
+          { "id": "D", "x": 25, "y": 0, "direction": 90 }
+        ],
+        "viewBox": "-25 -25 50 50",
+        "svgInner": "<defs><bx:export><bx:file format=\"svg\"/></bx:export></defs><rect x=\"-25\" y=\"-25\" width=\"50\" height=\"50\" style=\"stroke: rgb(0, 0, 0); fill: rgb(164, 88, 88);\"/><ellipse style=\"stroke: rgb(0, 0, 0); fill: rgb(88, 44, 44);\" cx=\"0\" cy=\"0\" rx=\"7.53\" ry=\"7.53\"/>"
+      },
+      {
+        "id": "hook_quarter_01",
+        "name": "Hook Quarter Circle",
+        "category": "hook",
+        "svg": "viertelKreis.svg",
+        "width": 50,
+        "height": 50,
+        "hasScrewHoles": true,
+        "rotationStep": 90,
+        "snapPoints": [
+          { "id": "A", "x": 0, "y": 25, "direction": 180 },
+          { "id": "B", "x": 25, "y": 0, "direction": 90 }
+        ],
+        "viewBox": "-25 -25 50 50",
+        "svgInner": "<path style=\"stroke: rgb(0, 0, 0); stroke-width: 5.66463px; fill: rgb(164, 88, 88);\" transform=\"matrix(0.176534, 0, 0, 0.176534, -54.528488, -50.99781)\" d=\"M 167.268 430.5 A 283.232 283.232 0 0 1 450.5 147.268 L 450.5 430.5 Z\"/><ellipse style=\"stroke: rgb(0, 0, 0); fill: rgb(91, 52, 52);\" cx=\"3.194\" cy=\"2.564\" rx=\"6.25\" ry=\"6.37\"/>"
+      },
+      {
+        "id": "hook_halfcircle_2corners_01",
+        "name": "Hook Half Circle 2 Corners",
+        "category": "hook",
+        "svg": "halbkreisMit2Ecken.svg",
+        "width": 100,
+        "height": 100,
+        "hasScrewHoles": true,
+        "rotationStep": 90,
+        "snapPoints": [
+          {
+            "id": "A",
+            "x": 50,
+            "y": 25,
+            "direction": 90
+          },
+          {
+            "id": "B",
+            "x": 25,
+            "y": 50,
+            "direction": 180
+          },
+          {
+            "id": "C",
+            "x": -25,
+            "y": 50,
+            "direction": 180
+          },
+          {
+            "id": "D",
+            "x": -50,
+            "y": 25,
+            "direction": 270
+          }
+        ],
+        "viewBox": "-50 -50 100 100",
+        "svgInner": "<ellipse style=\"stroke: rgb(0, 0, 0); fill: rgb(164, 88, 88);\" cx=\"0\" cy=\"0\" rx=\"50\" ry=\"50\"/><rect x=\"-50\" width=\"100\" height=\"50\" style=\"stroke: rgb(0, 0, 0); fill: rgb(164, 88, 88);\"/><ellipse style=\"stroke: rgb(0, 0, 0); stroke-width: 0px; fill: rgb(164, 88, 88);\" cx=\"0\" cy=\"0\" rx=\"49.5\" ry=\"49.5\"/><ellipse style=\"stroke: rgb(0, 0, 0); fill: rgb(88, 44, 44);\" cx=\"0\" cy=\"0\" rx=\"7.53\" ry=\"7.53\"/>"
+      },
+      {
+        id: "end_halfcircle_01",
+        name: "End Half Circle",
+        category: "end",
+        svg: "endHalbkreis.svg",
+        width: 50,
+        height: 50,
+        hasScrewHoles: false,
+        rotationStep: 90,
+        snapPoints: [
+          { id: "A", x: 0, y: 0, direction: 180 }
+        ],
+        svgInner: `<path d="M -25 0 A 25 25 0 0 1 25 0 L -25 0 Z" style="stroke:black; fill:rgb(164,88,88); stroke-width:1"/>`,
+        viewBox: "-25 -25 50 50"
+      },
+      {
+        "id": "connector_arc_01",
+        "name": "Arc Connector",
+        "category": "connector",
+        "svg": "arc.svg",
+        "width": 100,
+        "height": 100,
+        "hasScrewHoles": false,
+        "rotationStep": 90,
+        "snapPoints": [
+          {
+            "id": "A",
+            "x": -25,
+            "y": 50,
+            "direction": 180
+          },
+          {
+            "id": "B",
+            "x": 50,
+            "y": -25,
+            "direction": 90
+          }
+        ],
+        "svgInner": "<defs><bx:export><bx:file format=\"svg\" path=\"Untitled 6.svg\"/></bx:export></defs><path style=\"stroke: rgb(0, 0, 0); transform-origin: -14.819px 46.181px; stroke-width: 4.90319px; fill: rgb(164, 88, 88);\" transform=\"matrix(0.203949, 0, 0, 0.203949, -35.181004, -96.180657)\" d=\"M -14.819 536.5 A 490.319 490.319 0 0 1 475.5 46.181 L 475.5 291.341 A 245.159 245.159 0 0 0 230.341 536.5 Z\" bx:shape=\"pie 475.5 536.5 245.159 490.319 270 360 1@41067898\"/>",
+        "viewBox": "-50 -50 100 100"
+      },
+      {
+        id: "connector_triangle_01",
+        name: "Triangle Connector",
+        category: "connector",
+        svg: "dreieck.svg",
+        width: 50,
+        height: 50,
+        hasScrewHoles: false,
+        rotationStep: 90,
+        snapPoints: [
+          { id: "A", x: 0, y: 25, direction: 180 },
+          { id: "B", x: 25, y: 0, direction: 90 }
+        ],
+        viewBox: "-25 -25 50 50",
+        "svgInner": "<defs><bx:export><bx:file format=\"svg\" path=\"Untitled 6.svg\"/></bx:export></defs><path d=\"M 25 -25 L 25 25 L -25 25 L 25 -25 Z\" bx:shape=\"triangle -25 -25 50 50 1 0 1@21680a22\" style=\"stroke: rgb(0, 0, 0); fill: rgb(164, 88, 88); stroke-width: 1;\"/>"
+      },
+      {
+        id: "connector_square_01",
+        name: "Square Connector",
+        category: "connector",
+        svg: "quadrat.svg",
+        width: 50,
+        height: 50,
+        hasScrewHoles: false,
+        rotationStep: 90,
+        snapPoints: [
+          { id: "A", x: 0, y: 25, direction: 180 },
+          { id: "B", x: 0, y: -25, direction: 0 },
+          { id: "C", x: -25, y: 0, direction: 270 },
+          { id: "D", x: 25, y: 0, direction: 90 }
+        ],
+        viewBox: "-25 -25 50 50",
+        svgInner: `
+    <rect x="-25" y="-25" width="50" height="50"
+      style="stroke:black; fill:rgb(164,88,88); stroke-width:1"/>
+  `
+      },
+      {
+        id: "connector_quarter_01",
+        name: "Quarter Circle Connector",
+        category: "connector",
+        svg: "viertelkreis.svg",
+        width: 50,
+        height: 50,
+        hasScrewHoles: false,
+        rotationStep: 90,
+        snapPoints: [
+          { id: "A", x: 0, y: 25, direction: 180 },
+          { id: "B", x: 25, y: 0, direction: 90 }
+        ],
+        viewBox: "-25 -25 50 50",
+        "svgInner": "<defs><bx:export><bx:file format=\"svg\" path=\"Untitled 6.svg\"/></bx:export></defs><path style=\"stroke: rgb(0, 0, 0); stroke-width: 4.90319px; fill: rgb(164, 88, 88); transform-origin: 204.341px 232.341px;\" transform=\"matrix(0.203949, 0, 0, 0.203949, -229.341003, -257.341003)\" d=\"M 204.341 477.5 A 245.159 245.159 0 0 1 449.5 232.341 L 449.5 477.5 Z\" bx:shape=\"pie 449.5 477.5 0 245.159 270 360 1@0107100a\"/>"
+
+      }
+
+
+    ];
+
+    const EXAMPLES = [
+      {
+        "name": "Beispiel 1",
+        "version": 1,
+        "placed": [
+          {
+            "id": "i38",
+            "partId": "hook_3quarter_01",
+            "x": 112.5,
+            "y": 137.5,
+            "rotation": 270
+          },
+          {
+            "id": "i40",
+            "partId": "connector_arc_01",
+            "x": 62.5,
+            "y": 37.5,
+            "rotation": 270
+          },
+          {
+            "id": "i41",
+            "partId": "connector_square_01",
+            "x": 137.5,
+            "y": 112.5,
+            "rotation": 90
+          },
+          {
+            "id": "i49",
+            "partId": "end_halfcircle_01",
+            "x": -12.5,
+            "y": -62.5,
+            "rotation": 0
+          },
+          {
+            "id": "i51",
+            "partId": "connector_triangle_01",
+            "x": -62.5,
+            "y": -37.5,
+            "rotation": 0
+          },
+          {
+            "id": "i52",
+            "partId": "connector_quarter_01",
+            "x": 37.5,
+            "y": -37.5,
+            "rotation": 90
+          },
+          {
+            "id": "i53",
+            "partId": "hook_square_01",
+            "x": -12.5,
+            "y": -37.5,
+            "rotation": 270
+          },
+          {
+            "id": "i54",
+            "partId": "hook_3quarter_01",
+            "x": 212.5,
+            "y": 37.5,
+            "rotation": 90
+          },
+          {
+            "id": "i55",
+            "partId": "connector_quarter_01",
+            "x": 137.5,
+            "y": 62.5,
+            "rotation": 90
+          },
+          {
+            "id": "i56",
+            "partId": "connector_quarter_01",
+            "x": 187.5,
+            "y": 112.5,
+            "rotation": 180
+          },
+          {
+            "id": "i57",
+            "partId": "connector_square_01",
+            "x": 187.5,
+            "y": 62.5,
+            "rotation": 270
+          },
+          {
+            "id": "i58",
+            "partId": "end_halfcircle_01",
+            "x": -62.5,
+            "y": -12.5,
+            "rotation": 180
+          }
+        ],
+        "connections": [
+          {
+            "a": {
+              "instanceId": "i55",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i40",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i57",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i54",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i53",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i52",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i49",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i53",
+              "snapId": "D"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i51",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i53",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i58",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i51",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i41",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i38",
+              "snapId": "A"
+            }
+          }
+        ],
+        "selection": [],
+        "pan": {
+          "x": 222,
+          "y": 418
+        },
+        "zoom": 1,
+        "nextId": 59
+      },
+      {
+        "name": "Beispiel 2",
+        "version": 1,
+        "placed": [
+          {
+            "id": "i135",
+            "partId": "connector_quarter_01",
+            "x": 0,
+            "y": 0,
+            "rotation": 0
+          },
+          {
+            "id": "i136",
+            "partId": "connector_square_01",
+            "x": 0,
+            "y": 50,
+            "rotation": 90
+          },
+          {
+            "id": "i138",
+            "partId": "connector_arc_01",
+            "x": 75,
+            "y": 125,
+            "rotation": 270
+          },
+          {
+            "id": "i143",
+            "partId": "connector_arc_01",
+            "x": 175,
+            "y": 225,
+            "rotation": 270
+          },
+          {
+            "id": "i144",
+            "partId": "hook_3quarter_01",
+            "x": -25,
+            "y": 75,
+            "rotation": 270
+          },
+          {
+            "id": "i146",
+            "partId": "hook_quarter_01",
+            "x": 250,
+            "y": 250,
+            "rotation": 180
+          },
+          {
+            "id": "i147",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": 75,
+            "y": -25,
+            "rotation": 0
+          },
+          {
+            "id": "i148",
+            "partId": "connector_quarter_01",
+            "x": 150,
+            "y": 0,
+            "rotation": 180
+          },
+          {
+            "id": "i150",
+            "partId": "end_halfcircle_01",
+            "x": 250,
+            "y": 225,
+            "rotation": 0
+          },
+          {
+            "id": "i151",
+            "partId": "connector_square_01",
+            "x": 50,
+            "y": 50,
+            "rotation": 0
+          },
+          {
+            "id": "i152",
+            "partId": "connector_quarter_01",
+            "x": 100,
+            "y": 50,
+            "rotation": 180
+          },
+          {
+            "id": "i153",
+            "partId": "end_halfcircle_01",
+            "x": 150,
+            "y": -25,
+            "rotation": 0
+          },
+          {
+            "id": "i154",
+            "partId": "hook_fullcorner_01",
+            "x": 175,
+            "y": 125,
+            "rotation": 90
+          }
+        ],
+        "connections": [
+          {
+            "a": {
+              "instanceId": "i136",
+              "snapId": "C"
+            },
+            "b": {
+              "instanceId": "i135",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i144",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i136",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i146",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i143",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i150",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i146",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i147",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i148",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i151",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i138",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i152",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i147",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i153",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i148",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i154",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i143",
+              "snapId": "B"
+            }
+          }
+        ],
+        "selection": [],
+        "pan": {
+          "x": 188,
+          "y": 391
+        },
+        "zoom": 1,
+        "nextId": 155
+      },
+      {
+        "name": "Beispiel 3",
+        "version": 1,
+        "placed": [
+          {
+            "id": "i159",
+            "partId": "hook_halfcircle_01",
+            "x": 225,
+            "y": 25,
+            "rotation": 90
+          },
+          {
+            "id": "i160",
+            "partId": "connector_square_01",
+            "x": 150,
+            "y": 50,
+            "rotation": 0
+          },
+          {
+            "id": "i161",
+            "partId": "connector_arc_01",
+            "x": 75,
+            "y": 75,
+            "rotation": 0
+          },
+          {
+            "id": "i167",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": 75,
+            "y": -25,
+            "rotation": 0
+          },
+          {
+            "id": "i168",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": 175,
+            "y": -25,
+            "rotation": 0
+          },
+          {
+            "id": "i169",
+            "partId": "connector_quarter_01",
+            "x": 150,
+            "y": 100,
+            "rotation": 180
+          },
+          {
+            "id": "i170",
+            "partId": "hook_fullcorner_01",
+            "x": -25,
+            "y": -75,
+            "rotation": 0
+          },
+          {
+            "id": "i172",
+            "partId": "connector_triangle_01",
+            "x": 0,
+            "y": 0,
+            "rotation": 270
+          },
+          {
+            "id": "i173",
+            "partId": "end_halfcircle_01",
+            "x": 225,
+            "y": 50,
+            "rotation": 270
+          },
+          {
+            "id": "i174",
+            "partId": "end_halfcircle_01",
+            "x": 50,
+            "y": 125,
+            "rotation": 180
+          }
+        ],
+        "connections": [
+          {
+            "a": {
+              "instanceId": "i161",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i160",
+              "snapId": "C"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i172",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i167",
+              "snapId": "D"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i159",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i168",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i173",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i159",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i174",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i161",
+              "snapId": "A"
+            }
+          }
+        ],
+        "selection": [],
+        "pan": {
+          "x": 165,
+          "y": 406
+        },
+        "zoom": 1,
+        "nextId": 175
+      },
+      {
+        "name": "Beispiel 4",
+        "version": 1,
+        "placed": [
+          {
+            "id": "i175",
+            "partId": "connector_arc_01",
+            "x": 0,
+            "y": 0,
+            "rotation": 180
+          },
+          {
+            "id": "i176",
+            "partId": "connector_quarter_01",
+            "x": 25,
+            "y": -75,
+            "rotation": 0
+          },
+          {
+            "id": "i177",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": 100,
+            "y": -100,
+            "rotation": 90
+          },
+          {
+            "id": "i179",
+            "partId": "connector_arc_01",
+            "x": 100,
+            "y": 0,
+            "rotation": 270
+          },
+          {
+            "id": "i184",
+            "partId": "end_halfcircle_01",
+            "x": 100,
+            "y": -175,
+            "rotation": 90
+          },
+          {
+            "id": "i187",
+            "partId": "connector_square_01",
+            "x": 75,
+            "y": -175,
+            "rotation": 0
+          },
+          {
+            "id": "i188",
+            "partId": "end_halfcircle_01",
+            "x": -50,
+            "y": 25,
+            "rotation": 270
+          },
+          {
+            "id": "i191",
+            "partId": "hook_square_01",
+            "x": 175,
+            "y": 75,
+            "rotation": 0
+          },
+          {
+            "id": "i192",
+            "partId": "connector_square_01",
+            "x": 175,
+            "y": 25,
+            "rotation": 0
+          },
+          {
+            "id": "i193",
+            "partId": "connector_quarter_01",
+            "x": 225,
+            "y": 25,
+            "rotation": 90
+          },
+          {
+            "id": "i194",
+            "partId": "connector_triangle_01",
+            "x": 225,
+            "y": 75,
+            "rotation": 180
+          },
+          {
+            "id": "i195",
+            "partId": "end_halfcircle_01",
+            "x": 150,
+            "y": 75,
+            "rotation": 270
+          },
+          {
+            "id": "i196",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": 0,
+            "y": -150,
+            "rotation": 270
+          }
+        ],
+        "connections": [
+          {
+            "a": {
+              "instanceId": "i176",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i175",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i177",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i176",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i179",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i177",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i187",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i177",
+              "snapId": "D"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i188",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i175",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i192",
+              "snapId": "C"
+            },
+            "b": {
+              "instanceId": "i179",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i191",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i192",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i193",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i192",
+              "snapId": "D"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i194",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i193",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i195",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i191",
+              "snapId": "C"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i196",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i187",
+              "snapId": "C"
+            }
+          }
+        ],
+        "selection": [],
+        "pan": {
+          "x": 195,
+          "y": 490
+        },
+        "zoom": 1,
+        "nextId": 197
+      },
+      {
+        "name": "Beispiel 5",
+        "version": 1,
+        "placed": [
+          {
+            "id": "i207",
+            "partId": "connector_quarter_01",
+            "x": -50,
+            "y": 0,
+            "rotation": 90
+          },
+          {
+            "id": "i208",
+            "partId": "hook_square_01",
+            "x": -50,
+            "y": 50,
+            "rotation": 0
+          },
+          {
+            "id": "i210",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": -125,
+            "y": 75,
+            "rotation": 180
+          },
+          {
+            "id": "i211",
+            "partId": "connector_quarter_01",
+            "x": -100,
+            "y": 0,
+            "rotation": 0
+          },
+          {
+            "id": "i212",
+            "partId": "connector_square_01",
+            "x": 0,
+            "y": 100,
+            "rotation": 270
+          },
+          {
+            "id": "i213",
+            "partId": "hook_square_01",
+            "x": 50,
+            "y": 100,
+            "rotation": 0
+          },
+          {
+            "id": "i214",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": 125,
+            "y": 125,
+            "rotation": 90
+          },
+          {
+            "id": "i215",
+            "partId": "connector_square_01",
+            "x": 100,
+            "y": 50,
+            "rotation": 90
+          },
+          {
+            "id": "i216",
+            "partId": "connector_triangle_01",
+            "x": 50,
+            "y": 50,
+            "rotation": 0
+          },
+          {
+            "id": "i217",
+            "partId": "connector_arc_01",
+            "x": 175,
+            "y": 75,
+            "rotation": 90
+          },
+          {
+            "id": "i220",
+            "partId": "connector_triangle_01",
+            "x": -150,
+            "y": 0,
+            "rotation": 90
+          },
+          {
+            "id": "i221",
+            "partId": "connector_quarter_01",
+            "x": -50,
+            "y": 100,
+            "rotation": 270
+          },
+          {
+            "id": "i222",
+            "partId": "connector_triangle_01",
+            "x": 0,
+            "y": 50,
+            "rotation": 90
+          },
+          {
+            "id": "i223",
+            "partId": "end_halfcircle_01",
+            "x": 0,
+            "y": 125,
+            "rotation": 180
+          },
+          {
+            "id": "i225",
+            "partId": "connector_square_01",
+            "x": -200,
+            "y": 0,
+            "rotation": 0
+          },
+          {
+            "id": "i226",
+            "partId": "hook_square_01",
+            "x": 200,
+            "y": 150,
+            "rotation": 0
+          }
+        ],
+        "connections": [
+          {
+            "a": {
+              "instanceId": "i208",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i207",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i210",
+              "snapId": "D"
+            },
+            "b": {
+              "instanceId": "i208",
+              "snapId": "C"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i211",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i207",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i215",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i216",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i213",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i216",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i220",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i210",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i212",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i213",
+              "snapId": "C"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i221",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i212",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i222",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i208",
+              "snapId": "D"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i223",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i212",
+              "snapId": "C"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i225",
+              "snapId": "D"
+            },
+            "b": {
+              "instanceId": "i220",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i226",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i217",
+              "snapId": "B"
+            }
+          }
+        ],
+        "selection": [],
+        "pan": {
+          "x": 312.50770975925576,
+          "y": 365.20386877619643
+        },
+        "zoom": 1.1515178557440002,
+        "nextId": 227
+      },
+      {
+        "name": "Beispiel 6",
+        "version": 1,
+        "placed": [
+          {
+            "id": "i237",
+            "partId": "connector_arc_01",
+            "x": 0,
+            "y": 0,
+            "rotation": 270
+          },
+          {
+            "id": "i238",
+            "partId": "hook_quarter_01",
+            "x": 75,
+            "y": 25,
+            "rotation": 180
+          },
+          {
+            "id": "i239",
+            "partId": "connector_square_01",
+            "x": 75,
+            "y": -25,
+            "rotation": 0
+          },
+          {
+            "id": "i240",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": 150,
+            "y": -50,
+            "rotation": 0
+          },
+          {
+            "id": "i241",
+            "partId": "hook_square_01",
+            "x": 225,
+            "y": -25,
+            "rotation": 180
+          },
+          {
+            "id": "i245",
+            "partId": "hook_halfcircle_01",
+            "x": 300,
+            "y": 0,
+            "rotation": 90
+          },
+          {
+            "id": "i246",
+            "partId": "connector_square_01",
+            "x": 275,
+            "y": -25,
+            "rotation": 0
+          },
+          {
+            "id": "i247",
+            "partId": "connector_square_01",
+            "x": 275,
+            "y": 25,
+            "rotation": 0
+          },
+          {
+            "id": "i248",
+            "partId": "end_halfcircle_01",
+            "x": 275,
+            "y": -50,
+            "rotation": 0
+          },
+          {
+            "id": "i249",
+            "partId": "connector_quarter_01",
+            "x": 225,
+            "y": 25,
+            "rotation": 270
+          },
+          {
+            "id": "i250",
+            "partId": "hook_square_01",
+            "x": -25,
+            "y": -75,
+            "rotation": 0
+          },
+          {
+            "id": "i251",
+            "partId": "end_halfcircle_01",
+            "x": -50,
+            "y": -75,
+            "rotation": 270
+          },
+          {
+            "id": "i252",
+            "partId": "connector_triangle_01",
+            "x": 175,
+            "y": 25,
+            "rotation": 180
+          }
+        ],
+        "connections": [
+          {
+            "a": {
+              "instanceId": "i238",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i237",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i239",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i238",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i240",
+              "snapId": "D"
+            },
+            "b": {
+              "instanceId": "i239",
+              "snapId": "D"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i241",
+              "snapId": "D"
+            },
+            "b": {
+              "instanceId": "i240",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i246",
+              "snapId": "C"
+            },
+            "b": {
+              "instanceId": "i241",
+              "snapId": "C"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i247",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i246",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i248",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i246",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i249",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i247",
+              "snapId": "C"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i250",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i237",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i251",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i250",
+              "snapId": "C"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i252",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i240",
+              "snapId": "B"
+            }
+          }
+        ],
+        "selection": [],
+        "pan": {
+          "x": 174.50770975925576,
+          "y": 460.20386877619643
+        },
+        "zoom": 1.1515178557440002,
+        "nextId": 253
+      },
+      {
+        "name": "Beispiel 7",
+        "version": 1,
+        "placed": [
+          {
+            "id": "i253",
+            "partId": "connector_triangle_01",
+            "x": -62.5,
+            "y": 162.5,
+            "rotation": 0
+          },
+          {
+            "id": "i255",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": 12.5,
+            "y": 187.5,
+            "rotation": 180
+          },
+          {
+            "id": "i257",
+            "partId": "connector_square_01",
+            "x": 37.5,
+            "y": 112.5,
+            "rotation": 0
+          },
+          {
+            "id": "i258",
+            "partId": "connector_triangle_01",
+            "x": -12.5,
+            "y": 112.5,
+            "rotation": 0
+          },
+          {
+            "id": "i259",
+            "partId": "hook_square_01",
+            "x": 87.5,
+            "y": 112.5,
+            "rotation": 180
+          },
+          {
+            "id": "i261",
+            "partId": "connector_square_01",
+            "x": 87.5,
+            "y": 62.5,
+            "rotation": 0
+          },
+          {
+            "id": "i263",
+            "partId": "connector_triangle_01",
+            "x": 87.5,
+            "y": 12.5,
+            "rotation": 0
+          },
+          {
+            "id": "i265",
+            "partId": "end_halfcircle_01",
+            "x": 137.5,
+            "y": 37.5,
+            "rotation": 180
+          },
+          {
+            "id": "i266",
+            "partId": "hook_3quarter_01",
+            "x": 162.5,
+            "y": 37.5,
+            "rotation": 180
+          },
+          {
+            "id": "i267",
+            "partId": "connector_square_01",
+            "x": 137.5,
+            "y": 12.5,
+            "rotation": 270
+          },
+          {
+            "id": "i268",
+            "partId": "connector_quarter_01",
+            "x": 37.5,
+            "y": 62.5,
+            "rotation": 0
+          },
+          {
+            "id": "i270",
+            "partId": "connector_square_01",
+            "x": -62.5,
+            "y": 212.5,
+            "rotation": 270
+          }
+        ],
+        "connections": [
+          {
+            "a": {
+              "instanceId": "i267",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i266",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i261",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i263",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i259",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i261",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i270",
+              "snapId": "D"
+            },
+            "b": {
+              "instanceId": "i253",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i255",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i253",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i258",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i255",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i268",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i257",
+              "snapId": "B"
+            }
+          }
+        ],
+        "selection": [],
+        "pan": {
+          "x": 244.50770975925576,
+          "y": 248.20386877619643
+        },
+        "zoom": 1.1515178557440002,
+        "nextId": 271
+      },
+      {
+        "name": "Beispiel 8",
+        "version": 1,
+        "placed": [
+          {
+            "id": "i272",
+            "partId": "hook_3quarter_01",
+            "x": 0,
+            "y": 50,
+            "rotation": 180
+          },
+          {
+            "id": "i274",
+            "partId": "hook_halfcircle_01",
+            "x": 50,
+            "y": -50,
+            "rotation": 0
+          },
+          {
+            "id": "i276",
+            "partId": "hook_square_01",
+            "x": -25,
+            "y": -25,
+            "rotation": 90
+          },
+          {
+            "id": "i277",
+            "partId": "connector_arc_01",
+            "x": 0,
+            "y": -100,
+            "rotation": 0
+          },
+          {
+            "id": "i278",
+            "partId": "end_halfcircle_01",
+            "x": 50,
+            "y": -125,
+            "rotation": 90
+          },
+          {
+            "id": "i279",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": 100,
+            "y": 0,
+            "rotation": 90
+          },
+          {
+            "id": "i280",
+            "partId": "connector_quarter_01",
+            "x": 75,
+            "y": 75,
+            "rotation": 270
+          },
+          {
+            "id": "i281",
+            "partId": "end_halfcircle_01",
+            "x": -50,
+            "y": -25,
+            "rotation": 270
+          },
+          {
+            "id": "i282",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": 150,
+            "y": 100,
+            "rotation": 180
+          },
+          {
+            "id": "i283",
+            "partId": "connector_quarter_01",
+            "x": 225,
+            "y": 75,
+            "rotation": 90
+          },
+          {
+            "id": "i284",
+            "partId": "hook_square_01",
+            "x": 225,
+            "y": 125,
+            "rotation": 270
+          },
+          {
+            "id": "i285",
+            "partId": "connector_triangle_01",
+            "x": 275,
+            "y": 125,
+            "rotation": 180
+          },
+          {
+            "id": "i286",
+            "partId": "connector_square_01",
+            "x": 25,
+            "y": -25,
+            "rotation": 0
+          },
+          {
+            "id": "i287",
+            "partId": "connector_quarter_01",
+            "x": -25,
+            "y": 25,
+            "rotation": 270
+          }
+        ],
+        "connections": [
+          {
+            "a": {
+              "instanceId": "i277",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i276",
+              "snapId": "C"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i278",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i277",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i280",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i279",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i282",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i280",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i283",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i282",
+              "snapId": "D"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i284",
+              "snapId": "D"
+            },
+            "b": {
+              "instanceId": "i283",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i285",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i284",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i274",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i279",
+              "snapId": "D"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i286",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i274",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i287",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i272",
+              "snapId": "B"
+            }
+          }
+        ],
+        "selection": [],
+        "pan": {
+          "x": 179.50770975925576,
+          "y": 418.20386877619643
+        },
+        "zoom": 1.1515178557440002,
+        "nextId": 288
+      },
+      {
+        "name": "Beispiel 9",
+        "version": 1,
+        "placed": [
+          {
+            "id": "i299",
+            "partId": "connector_triangle_01",
+            "x": -25,
+            "y": 75,
+            "rotation": 270
+          },
+          {
+            "id": "i302",
+            "partId": "connector_arc_01",
+            "x": 50,
+            "y": -50,
+            "rotation": 0
+          },
+          {
+            "id": "i304",
+            "partId": "connector_square_01",
+            "x": -25,
+            "y": 25,
+            "rotation": 0
+          },
+          {
+            "id": "i306",
+            "partId": "hook_fullcorner_01",
+            "x": 150,
+            "y": -50,
+            "rotation": 180
+          },
+          {
+            "id": "i308",
+            "partId": "connector_triangle_01",
+            "x": -25,
+            "y": 75,
+            "rotation": 270
+          },
+          {
+            "id": "i309",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": -50,
+            "y": -50,
+            "rotation": 0
+          },
+          {
+            "id": "i311",
+            "partId": "hook_fullcorner_01",
+            "x": 50,
+            "y": 100,
+            "rotation": 180
+          },
+          {
+            "id": "i315",
+            "partId": "connector_square_01",
+            "x": 25,
+            "y": 25,
+            "rotation": 0
+          },
+          {
+            "id": "i316",
+            "partId": "connector_square_01",
+            "x": -75,
+            "y": 25,
+            "rotation": 0
+          },
+          {
+            "id": "i317",
+            "partId": "connector_quarter_01",
+            "x": -125,
+            "y": 25,
+            "rotation": 270
+          },
+          {
+            "id": "i318",
+            "partId": "end_halfcircle_01",
+            "x": -125,
+            "y": 0,
+            "rotation": 0
+          }
+        ],
+        "connections": [
+          {
+            "a": {
+              "instanceId": "i306",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i302",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i308",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i304",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i311",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i299",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i309",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i304",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i315",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i311",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i316",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i309",
+              "snapId": "C"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i318",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i317",
+              "snapId": "B"
+            }
+          }
+        ],
+        "selection": [],
+        "pan": {
+          "x": 233.50770975925576,
+          "y": 454.20386877619643
+        },
+        "zoom": 1.1515178557440002,
+        "nextId": 319
+      },
+      {
+        "name": "Beispiel 10",
+        "version": 1,
+        "placed": [
+          {
+            "id": "i320",
+            "partId": "hook_3quarter_01",
+            "x": 0,
+            "y": 50,
+            "rotation": 270
+          },
+          {
+            "id": "i324",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": 50,
+            "y": -50,
+            "rotation": 0
+          },
+          {
+            "id": "i325",
+            "partId": "connector_arc_01",
+            "x": -50,
+            "y": -50,
+            "rotation": 270
+          },
+          {
+            "id": "i326",
+            "partId": "connector_square_01",
+            "x": 125,
+            "y": -25,
+            "rotation": 90
+          },
+          {
+            "id": "i327",
+            "partId": "end_halfcircle_01",
+            "x": -75,
+            "y": -100,
+            "rotation": 0
+          },
+          {
+            "id": "i328",
+            "partId": "connector_square_01",
+            "x": 25,
+            "y": 25,
+            "rotation": 0
+          },
+          {
+            "id": "i329",
+            "partId": "hook_quarter_01",
+            "x": 175,
+            "y": -25,
+            "rotation": 180
+          },
+          {
+            "id": "i330",
+            "partId": "end_halfcircle_01",
+            "x": 175,
+            "y": -50,
+            "rotation": 0
+          },
+          {
+            "id": "i331",
+            "partId": "connector_quarter_01",
+            "x": 75,
+            "y": 25,
+            "rotation": 180
+          }
+        ],
+        "connections": [
+          {
+            "a": {
+              "instanceId": "i325",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i324",
+              "snapId": "D"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i326",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i324",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i327",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i325",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i328",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i320",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i331",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i324",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i330",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i329",
+              "snapId": "A"
+            }
+          }
+        ],
+        "selection": [],
+        "pan": {
+          "x": 252.50770975925576,
+          "y": 460.20386877619643
+        },
+        "zoom": 1.1515178557440002,
+        "nextId": 332
+      },
+      {
+        "name": "Beispiel 11",
+        "version": 1,
+        "placed": [
+          {
+            "id": "i332",
+            "partId": "connector_square_01",
+            "x": 0,
+            "y": 0,
+            "rotation": 0
+          },
+          {
+            "id": "i334",
+            "partId": "connector_arc_01",
+            "x": -25,
+            "y": 75,
+            "rotation": 180
+          },
+          {
+            "id": "i344",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": 175,
+            "y": 75,
+            "rotation": 90
+          },
+          {
+            "id": "i346",
+            "partId": "connector_square_01",
+            "x": 100,
+            "y": 100,
+            "rotation": 0
+          },
+          {
+            "id": "i347",
+            "partId": "connector_quarter_01",
+            "x": 50,
+            "y": 100,
+            "rotation": 270
+          },
+          {
+            "id": "i348",
+            "partId": "hook_square_01",
+            "x": 50,
+            "y": 50,
+            "rotation": 0
+          },
+          {
+            "id": "i349",
+            "partId": "connector_square_01",
+            "x": 100,
+            "y": 50,
+            "rotation": 0
+          },
+          {
+            "id": "i351",
+            "partId": "connector_quarter_01",
+            "x": 50,
+            "y": 0,
+            "rotation": 90
+          },
+          {
+            "id": "i352",
+            "partId": "hook_fullcorner_01",
+            "x": -25,
+            "y": -75,
+            "rotation": 0
+          },
+          {
+            "id": "i356",
+            "partId": "connector_quarter_01",
+            "x": 100,
+            "y": 150,
+            "rotation": 180
+          },
+          {
+            "id": "i357",
+            "partId": "end_halfcircle_01",
+            "x": 75,
+            "y": 150,
+            "rotation": 270
+          },
+          {
+            "id": "i358",
+            "partId": "end_halfcircle_01",
+            "x": -125,
+            "y": 100,
+            "rotation": 270
+          },
+          {
+            "id": "i359",
+            "partId": "connector_arc_01",
+            "x": 175,
+            "y": -25,
+            "rotation": 0
+          },
+          {
+            "id": "i360",
+            "partId": "end_halfcircle_01",
+            "x": 275,
+            "y": -50,
+            "rotation": 90
+          },
+          {
+            "id": "i361",
+            "partId": "connector_quarter_01",
+            "x": 50,
+            "y": -50,
+            "rotation": 180
+          },
+          {
+            "id": "i362",
+            "partId": "end_halfcircle_01",
+            "x": 50,
+            "y": -75,
+            "rotation": 0
+          },
+          {
+            "id": "i363",
+            "partId": "hook_square_01",
+            "x": -100,
+            "y": 100,
+            "rotation": 0
+          },
+          {
+            "id": "i364",
+            "partId": "hook_square_01",
+            "x": 250,
+            "y": -50,
+            "rotation": 0
+          }
+        ],
+        "connections": [
+          {
+            "a": {
+              "instanceId": "i334",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i332",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i346",
+              "snapId": "D"
+            },
+            "b": {
+              "instanceId": "i344",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i347",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i346",
+              "snapId": "C"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i348",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i347",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i349",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i346",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i351",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i332",
+              "snapId": "D"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i352",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i332",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i357",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i356",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i359",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i344",
+              "snapId": "D"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i361",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i352",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i362",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i361",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i363",
+              "snapId": "D"
+            },
+            "b": {
+              "instanceId": "i334",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i358",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i363",
+              "snapId": "C"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i364",
+              "snapId": "C"
+            },
+            "b": {
+              "instanceId": "i359",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i360",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i364",
+              "snapId": "D"
+            }
+          }
+        ],
+        "selection": [],
+        "pan": {
+          "x": 223.30709059993282,
+          "y": 467.0675595040978
+        },
+        "zoom": 1.0593964272844802,
+        "nextId": 365
+      },
+      {
+        "name": "Beispiel 12",
+        "version": 1,
+        "placed": [
+          {
+            "id": "i365",
+            "partId": "hook_fullcorner_01",
+            "x": 0,
+            "y": 0,
+            "rotation": 0
+          },
+          {
+            "id": "i367",
+            "partId": "hook_quarter_01",
+            "x": 75,
+            "y": 75,
+            "rotation": 180
+          },
+          {
+            "id": "i369",
+            "partId": "connector_quarter_01",
+            "x": 75,
+            "y": -25,
+            "rotation": 0
+          },
+          {
+            "id": "i371",
+            "partId": "hook_square_01",
+            "x": 125,
+            "y": 25,
+            "rotation": 90
+          },
+          {
+            "id": "i373",
+            "partId": "connector_square_01",
+            "x": 75,
+            "y": 25,
+            "rotation": 0
+          },
+          {
+            "id": "i374",
+            "partId": "connector_quarter_01",
+            "x": 25,
+            "y": 75,
+            "rotation": 0
+          },
+          {
+            "id": "i375",
+            "partId": "end_halfcircle_01",
+            "x": 25,
+            "y": 100,
+            "rotation": 180
+          },
+          {
+            "id": "i376",
+            "partId": "connector_quarter_01",
+            "x": 125,
+            "y": 75,
+            "rotation": 270
+          },
+          {
+            "id": "i378",
+            "partId": "end_halfcircle_01",
+            "x": 100,
+            "y": -25,
+            "rotation": 90
+          },
+          {
+            "id": "i379",
+            "partId": "connector_quarter_01",
+            "x": 175,
+            "y": 75,
+            "rotation": 180
+          },
+          {
+            "id": "i380",
+            "partId": "end_halfcircle_01",
+            "x": 175,
+            "y": 50,
+            "rotation": 0
+          }
+        ],
+        "connections": [
+          {
+            "a": {
+              "instanceId": "i376",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i371",
+              "snapId": "D"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i367",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i373",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i374",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i367",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i375",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i374",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i369",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i373",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i378",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i369",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i379",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i376",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i380",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i379",
+              "snapId": "A"
+            }
+          }
+        ],
+        "selection": [],
+        "pan": {
+          "x": 199.2803421886758,
+          "y": 403.3961077084151
+        },
+        "zoom": 1.32599337209726,
+        "nextId": 381
+      },
+      {
+        "name": "Beispiel 13",
+        "version": 1,
+        "placed": [
+          {
+            "id": "i400",
+            "partId": "hook_halfcircle_01",
+            "x": 25,
+            "y": 100,
+            "rotation": 0
+          },
+          {
+            "id": "i404",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": 125,
+            "y": 100,
+            "rotation": 0
+          },
+          {
+            "id": "i407",
+            "partId": "hook_fullcorner_01",
+            "x": 175,
+            "y": 200,
+            "rotation": 180
+          },
+          {
+            "id": "i408",
+            "partId": "hook_square_01",
+            "x": 250,
+            "y": 75,
+            "rotation": 90
+          },
+          {
+            "id": "i413",
+            "partId": "connector_square_01",
+            "x": 50,
+            "y": 125,
+            "rotation": 0
+          },
+          {
+            "id": "i414",
+            "partId": "connector_quarter_01",
+            "x": 250,
+            "y": 25,
+            "rotation": 90
+          },
+          {
+            "id": "i422",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": -25,
+            "y": 150,
+            "rotation": 270
+          },
+          {
+            "id": "i423",
+            "partId": "connector_quarter_01",
+            "x": 50,
+            "y": 175,
+            "rotation": 180
+          },
+          {
+            "id": "i424",
+            "partId": "connector_square_01",
+            "x": 200,
+            "y": 125,
+            "rotation": 0
+          },
+          {
+            "id": "i425",
+            "partId": "connector_quarter_01",
+            "x": 250,
+            "y": 125,
+            "rotation": 180
+          },
+          {
+            "id": "i426",
+            "partId": "connector_triangle_01",
+            "x": 200,
+            "y": 75,
+            "rotation": 0
+          }
+        ],
+        "connections": [
+          {
+            "a": {
+              "instanceId": "i407",
+              "snapId": "B"
+            },
+            "b": {
+              "instanceId": "i404",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i422",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i400",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i423",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i413",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i425",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i408",
+              "snapId": "D"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i426",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i424",
+              "snapId": "B"
+            }
+          }
+        ],
+        "selection": [],
+        "pan": {
+          "x": 181.7297688952678,
+          "y": 327.56725918689034
+        },
+        "zoom": 1.1813731464785115,
+        "nextId": 427
+      },
+      {
+        "name": "Beispiel 14",
+        "version": 1,
+        "placed": [
+          {
+            "id": "i498",
+            "partId": "hook_quarter_01",
+            "x": 0,
+            "y": 50,
+            "rotation": 180
+          },
+          {
+            "id": "i499",
+            "partId": "hook_fullcorner_01",
+            "x": 25,
+            "y": -25,
+            "rotation": 90
+          },
+          {
+            "id": "i500",
+            "partId": "connector_square_01",
+            "x": 50,
+            "y": 50,
+            "rotation": 0
+          },
+          {
+            "id": "i501",
+            "partId": "end_halfcircle_01",
+            "x": 75,
+            "y": 50,
+            "rotation": 90
+          },
+          {
+            "id": "i502",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": -25,
+            "y": 75,
+            "rotation": 180
+          },
+          {
+            "id": "i504",
+            "partId": "connector_square_01",
+            "x": 50,
+            "y": 100,
+            "rotation": 180
+          },
+          {
+            "id": "i505",
+            "partId": "connector_square_01",
+            "x": 100,
+            "y": 100,
+            "rotation": 0
+          },
+          {
+            "id": "i506",
+            "partId": "hook_square_01",
+            "x": -100,
+            "y": 0,
+            "rotation": 180
+          },
+          {
+            "id": "i507",
+            "partId": "connector_quarter_01",
+            "x": 50,
+            "y": 150,
+            "rotation": 180
+          },
+          {
+            "id": "i508",
+            "partId": "hook_halfcircle_2corners_01",
+            "x": 175,
+            "y": 125,
+            "rotation": 90
+          },
+          {
+            "id": "i509",
+            "partId": "hook_quarter_01",
+            "x": 100,
+            "y": 150,
+            "rotation": 270
+          },
+          {
+            "id": "i510",
+            "partId": "connector_quarter_01",
+            "x": 150,
+            "y": 50,
+            "rotation": 0
+          },
+          {
+            "id": "i512",
+            "partId": "connector_quarter_01",
+            "x": -50,
+            "y": 0,
+            "rotation": 90
+          }
+        ],
+        "connections": [
+          {
+            "a": {
+              "instanceId": "i501",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i500",
+              "snapId": "D"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i502",
+              "snapId": "D"
+            },
+            "b": {
+              "instanceId": "i500",
+              "snapId": "C"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i504",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i500",
+              "snapId": "A"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i505",
+              "snapId": "C"
+            },
+            "b": {
+              "instanceId": "i504",
+              "snapId": "C"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i507",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i504",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i508",
+              "snapId": "C"
+            },
+            "b": {
+              "instanceId": "i505",
+              "snapId": "D"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i509",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i508",
+              "snapId": "B"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i512",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i506",
+              "snapId": "C"
+            }
+          },
+          {
+            "a": {
+              "instanceId": "i499",
+              "snapId": "A"
+            },
+            "b": {
+              "instanceId": "i498",
+              "snapId": "A"
+            }
+          }
+        ],
+        "selection": [],
+        "pan": {
+          "x": 276.7297688952678,
+          "y": 364.56725918689034
+        },
+        "zoom": 1.1813731464785115,
+        "nextId": 513
+      }
+    ];
+
+
+    const CONFIG = {
+      gridSize: 50,
+      snapDistance: 18,
+      snapAngleTolerance: 0
+    };
+
+
+    const historyStack = [];
+    const redoStack = [];
+
+    function saveState() {
+      historyStack.push(getStateSnapshot());
+
+      if (historyStack.length > 50) {
+        historyStack.shift();
+      }
+
+      // Sobald eine neue Änderung gemacht wird,
+      // ist die alte Redo-Kette nicht mehr gültig.
+      redoStack.length = 0;
+    }
+
+    function getStateSnapshot() {
+      return JSON.stringify({
+        placed: state.placed,
+        connections: state.connections,
+        selection: Array.from(state.selection),
+        nextId: state.nextId,
+        mountConfig: state.mountConfig
+      });
+    }
+
+    function restoreStateSnapshot(snapshot) {
+      const data = JSON.parse(snapshot);
+
+      state.placed = data.placed || [];
+      state.connections = data.connections || [];
+      state.selection = new Set(data.selection || []);
+      state.nextId = data.nextId || 1;
+      state.mountConfig = data.mountConfig || null;
+
+      render();
+    }
+
+    const colorDropdowns = [];
+
+    const PX_TO_CM = 0.12;
+
+    function formatCm(valuePx) {
+      return (valuePx * PX_TO_CM).toFixed(1);
+    }
+
+    function getSelectionBounds() {
+      if (!state.selection || state.selection.size === 0) return null;
+
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+
+      for (const id of state.selection) {
+        const inst = state.placed.find(p => p.id === id);
+        if (!inst) continue;
+
+        const b = instanceBounds(inst);
+
+        minX = Math.min(minX, b.x1);
+        minY = Math.min(minY, b.y1);
+        maxX = Math.max(maxX, b.x2);
+        maxY = Math.max(maxY, b.y2);
+      }
+
+      if (!Number.isFinite(minX)) return null;
+
+      return {
+        x1: minX,
+        y1: minY,
+        x2: maxX,
+        y2: maxY,
+        width: maxX - minX,
+        height: maxY - minY
+      };
+    }
+
+    function updateSelectionSizeInfo() {
+      const el = $("#selectionSizeInfo");
+      if (!el) return;
+
+      const bounds = getSelectionBounds();
+
+      if (!bounds) {
+        el.classList.add("hidden");
+        el.innerHTML = "";
+        return;
+      }
+
+      const widthCm = formatCm(bounds.width);
+      const heightCm = formatCm(bounds.height);
+
+      el.classList.remove("hidden");
+      el.innerHTML = `
+    <span class="muted">Selection:</span>
+    ${widthCm} cm × ${heightCm} cm
+  `;
+    }
+
+    function setupColorDropdown({
+      buttonId,
+      paletteId,
+      pickerId,
+      previewId,
+      getColor,
+      applyColor
+    }) {
+
+
+
+      function positionFloatingPalette() {
+        if (!isCanvasActionPalette || palette.classList.contains("hidden")) return;
+
+        const rect = button.getBoundingClientRect();
+        const paletteWidth = palette.offsetWidth || 180;
+
+        let left = rect.left;
+        let top = rect.bottom + 6;
+
+        left = Math.min(left, window.innerWidth - paletteWidth - 8);
+        left = Math.max(8, left);
+
+        palette.style.left = `${left}px`;
+        palette.style.top = `${top}px`;
+      }
+
+      const button = document.getElementById(buttonId);
+      const palette = document.getElementById(paletteId);
+      const picker = document.getElementById(pickerId);
+      const preview = document.getElementById(previewId);
+
+      const isCanvasActionPalette = !!button.closest("#canvasActions");
+
+      if (isCanvasActionPalette && palette.parentElement !== document.body) {
+        palette.classList.add("floating-palette");
+        document.body.appendChild(palette);
+      }
+
+      function setColor(color) {
+        picker.value = color;
+        preview.style.background = color;
+        applyColor(color);
+      }
+
+      createPaletteUI(palette, setColor, () => {
+        picker.style.pointerEvents = "auto";
+        picker.focus();
+        picker.click();
+      });
+
+      button.addEventListener("click", ev => {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const willOpen = palette.classList.contains("hidden");
+
+        colorDropdowns.forEach(d => {
+          if (d.palette !== palette) d.palette.classList.add("hidden");
+        });
+
+        if (willOpen) {
+          palette.classList.remove("hidden");
+          requestAnimationFrame(positionFloatingPalette);
+        } else {
+          palette.classList.add("hidden");
+        }
+      });
+
+      picker.addEventListener("input", ev => {
+        setColor(ev.target.value);
+        // Dropdown offen lassen, wenn Custom Color benutzt wird
+        // palette.classList.add("hidden");
+      });
+
+      picker.addEventListener("change", () => {
+        palette.classList.add("hidden");
+      });
+
+      palette.addEventListener("click", ev => ev.stopPropagation());
+
+      picker.value = getColor();
+      preview.style.background = getColor();
+
+      colorDropdowns.push({ palette });
+    }
+
+    function setupMountConfigDropdown() {
+      const button = document.getElementById("mountConfigMenuBtn");
+      const menu = document.getElementById("mountConfigMenu");
+      const preview = document.getElementById("mountConfigPreview");
+
+      const labels = {
+        countersunk: "Countersunk",
+        roundhead: "Round Head",
+        tape: "Tape"
+      };
+
+      function setMountConfig(value) {
+        state.mountConfig = value;
+        preview.textContent = labels[value] || "Select Wall Mount";
+        menu.classList.add("hidden");
+        render();
+      }
+
+      colorDropdowns.push({ palette: menu });
+
+      preview.textContent = state.mountConfig
+        ? labels[state.mountConfig]
+        : "Select Wall Mount";
+
+      button.addEventListener("click", ev => {
+        ev.stopPropagation();
+
+        colorDropdowns.forEach(d => {
+          if (d.palette !== menu) d.palette.classList.add("hidden");
+        });
+
+        menu.classList.toggle("hidden");
+      });
+
+      menu.addEventListener("click", ev => {
+        ev.stopPropagation();
+
+        const btn = ev.target.closest("[data-mount-config]");
+        if (!btn) return;
+
+        setMountConfig(btn.dataset.mountConfig);
+      });
+
+      colorDropdowns.push({ palette: menu });
+
+      setMountConfig(state.mountConfig);
+    }
+
+    function undo() {
+      if (historyStack.length === 0) return;
+
+      redoStack.push(getStateSnapshot());
+
+      const previous = historyStack.pop();
+      restoreStateSnapshot(previous);
+    }
+
+    function redo() {
+      if (redoStack.length === 0) return;
+
+      historyStack.push(getStateSnapshot());
+
+      const next = redoStack.pop();
+      restoreStateSnapshot(next);
+    }
+
+    const state = {
+      mode: "idle",
+      placed: [],
+      connections: [],
+      selection: new Set(),
+      draggingPart: null,
+      ghost: null,
+      paletteDrag: false,
+      dragPreviewEl: null,
+      nextId: 1,
+      pointer: { x: 0, y: 0 },
+      pan: { x: 0, y: 0 },
+      zoom: 1,
+      panning: false,
+      panStart: null,
+      moveExisting: null,
+      selectBox: null,
+      tool: "edit",
+      activePointers: new Map(),
+      pinch: null,
+      mainColor: '#a45858',
+      hookColor: '#5b3434',
+      mountConfig: null,
+      isMultiTouch: false
+    };
+
+    const $ = sel => document.querySelector(sel);
+    const svgNS = "http://www.w3.org/2000/svg";
+    const PAN_SENSITIVITY = 1;
+    const stage = $("#stage");
+    const viewport = $("#viewport");
+    const palette = $("#palette");
+    const shapesLayer = $("#shapesLayer");
+    const snapLayer = $("#snapLayer");
+    const ghostLayer = $("#ghostLayer");
+    const selectionLayer = $("#selectionLayer");
+    const connectionsLayer = $("#connectionsLayer");
+
+    document.addEventListener("touchmove", ev => {
+      if (state && state.paletteDrag) {
+        ev.preventDefault();
+      }
+    }, { passive: false });
+
+
+    function categoryLabel(cat) {
+      return cat === "hook" ? "Hook Parts" : cat === "connector" ? "Connector Parts" : "End Parts";
+    }
+
+    function setupPalette() {
+      palette.innerHTML = "";
+      const order = ["hook", "connector", "end"];
+      for (const cat of order) {
+        const group = document.createElement("div");
+        const h = document.createElement("h2");
+        h.textContent = categoryLabel(cat);
+        group.appendChild(h);
+
+        PARTS.filter(p => p.category === cat).forEach(part => {
+          const item = document.createElement("div");
+          item.className = "part";
+          item.innerHTML = `
+        <div class="thumb">${makeSvgMarkup(part, part.width * 0.58, part.height * 0.58)}</div>
+        <div>
+          <div class="part-name">${part.name}</div>
+          <div class="part-meta">${part.width}×${part.height} · ${part.snapPoints.length} Snap</div>
+        </div>
+      `;
+          item.addEventListener("pointerdown", ev => {
+            ev.preventDefault();
+            startPlacing(part, ev);
+          });
+          group.appendChild(item);
+        });
+        palette.appendChild(group);
+      }
+    }
+
+    function colorizeSvgInner(inner, colors = null) {
+      const mainColor = (colors && colors.mainColor) || state.mainColor || "#a45858";
+      const hookColor = (colors && colors.hookColor) || state.hookColor || "#5b3434";
+      return inner
+        // primary body color
+        .replace(/rgb\(164,\s*88,\s*88\)/g, mainColor)
+        .replace(/#a45858/gi, mainColor)
+        .replace(/fill:\s*rgb\(164,\s*88,\s*88\)/g, "fill: " + mainColor)
+        .replace(/fill="rgb\(164,\s*88,\s*88\)"/g, 'fill="' + mainColor + '"')
+        // secondary hook / dot / screw color
+        .replace(/rgb\(91,\s*52,\s*52\)/g, hookColor)
+        .replace(/rgb\(88,\s*44,\s*44\)/g, hookColor)
+        .replace(/rgb\(39,\s*23,\s*23\)/g, hookColor);
+    }
+
+    function currentColors() {
+      return { mainColor: state.mainColor, hookColor: state.hookColor };
+    }
+
+    function setSelectedHookColor(color) {
+      state.placed.forEach(inst => {
+        if (state.selection.has(inst.id)) {
+          inst.hookColor = color;
+        }
+      });
+      render();
+    }
+
+    function setSelectedMainColor(color) {
+      saveState();
+      state.placed.forEach(inst => {
+        if (state.selection.has(inst.id)) {
+          inst.mainColor = color;
+        }
+      });
+      render();
+    }
+
+    function makeSvgMarkup(part, w = part.width, h = part.height, colors = null) {
+      return `<svg xmlns="${svgNS}" viewBox="${part.viewBox}" width="${w}" height="${h}">${colorizeSvgInner(part.svgInner, colors)}</svg>`;
+    }
+
+    function createNestedSvg(part, colors = null) {
+      const wrapper = document.createElementNS(svgNS, "svg");
+      wrapper.setAttribute("class", "shape-svg");
+      wrapper.setAttribute("x", -part.width / 2);
+      wrapper.setAttribute("y", -part.height / 2);
+      wrapper.setAttribute("width", part.width);
+      wrapper.setAttribute("height", part.height);
+      wrapper.setAttribute("viewBox", part.viewBox);
+      wrapper.innerHTML = colorizeSvgInner(part.svgInner, colors);
+      return wrapper;
+    }
+
+    function screenToWorld(ev) {
+      const pt = stage.createSVGPoint();
+      pt.x = ev.clientX; pt.y = ev.clientY;
+      const ctm = viewport.getScreenCTM();
+      return pt.matrixTransform(ctm.inverse());
+    }
+
+    function snapGrid(v) {
+      return Math.round(v / CONFIG.gridSize) * CONFIG.gridSize;
+    }
+
+    function rotatePoint(p, rot) {
+      const rad = ((rot % 360) + 360) % 360 * Math.PI / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+
+      return {
+        x: p.x * cos - p.y * sin,
+        y: p.x * sin + p.y * cos
+      };
+    }
+
+    function transformPoint(p, rotation, mirrored = false) {
+      let rp = rotatePoint(p, rotation);
+
+      if (mirrored) {
+        rp.x = -rp.x;
+      }
+
+      return rp;
+    }
+
+
+    function transformDirection(dir, rotation, mirrored = false) {
+      let d = rotateDirection(dir, rotation);
+
+      if (mirrored) {
+        d = (360 - d) % 360;
+      }
+
+      return d;
+    }
+
+    function rotateDirection(dir, rot) {
+      return ((dir + rot) % 360 + 360) % 360;
+    }
+
+    function angleDiff(a, b) {
+      return Math.abs(((a - b + 540) % 360) - 180);
+    }
+
+    function angleDistance(a, b) {
+      return Math.abs(((a - b + 540) % 360) - 180);
+    }
+
+    function oppositeDirections(a, b) {
+      return angleDistance((a + 180) % 360, b) <= 1;
+    }
+
+    function getPart(id) {
+      return PARTS.find(p => p.id === id);
+    }
+
+    function worldSnapPoints(instance) {
+      const part = getPart(instance.partId);
+      return part.snapPoints.map(sp => {
+        const rp = transformPoint(sp, instance.rotation, instance.mirrored);
+        return {
+          instanceId: instance.id,
+          snapId: sp.id,
+          x: instance.x + rp.x,
+          y: instance.y + rp.y,
+          direction: transformDirection(sp.direction, instance.rotation, instance.mirrored),
+          occupied: isSnapOccupied(instance.id, sp.id)
+        };
+      });
+    }
+
+    function isSnapOccupied(instanceId, snapId, ignoreIds = new Set()) {
+      return state.connections.some(c => {
+        if (ignoreIds.has(c.a.instanceId) || ignoreIds.has(c.b.instanceId)) return false;
+        return (c.a.instanceId === instanceId && c.a.snapId === snapId) ||
+          (c.b.instanceId === instanceId && c.b.snapId === snapId);
+      });
+    }
+
+    function allOpenSnapPoints(excludeIds = new Set(), ignoreIds = new Set()) {
+      return state.placed
+        .filter(inst => !excludeIds.has(inst.id))
+        .flatMap(inst => {
+          const part = getPart(inst.partId);
+          return part.snapPoints.map(sp => {
+            const rp = transformPoint(sp, inst.rotation, inst.mirrored);
+            return {
+              instanceId: inst.id,
+              snapId: sp.id,
+              x: inst.x + rp.x,
+              y: inst.y + rp.y,
+              direction: transformDirection(sp.direction, inst.rotation, inst.mirrored),
+              occupied: isSnapOccupied(inst.id, sp.id, ignoreIds)
+            };
+          });
+        })
+        .filter(sp => !sp.occupied);
+    }
+
+
+    function lockPageScroll() {
+      document.body.classList.add("palette-dragging");
+      const paletteEl = document.querySelector(".palette-scroll");
+      if (paletteEl) paletteEl.style.overflow = "hidden";
+    }
+
+    function unlockPageScroll() {
+      document.body.classList.remove("palette-dragging");
+      const paletteEl = document.querySelector(".palette-scroll");
+      if (paletteEl) paletteEl.style.overflow = "";
+    }
+
+    function startPlacing(part, ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      state.mode = "placing";
+      state.paletteDrag = true;
+      state.draggingPart = part;
+      state.ghost = {
+        partId: part.id,
+        x: 0,
+        y: 0,
+        rotation: 0,
+        snapCandidate: null,
+        visible: false,
+        mainColor: state.mainColor,
+        hookColor: state.hookColor
+      };
+      state.selection.clear();
+      lockPageScroll();
+
+      updateDragPreview(ev);
+      updatePaletteDrag(ev);
+
+      try { ev.currentTarget.setPointerCapture?.(ev.pointerId); } catch (e) { }
+      window.addEventListener("pointermove", handlePaletteDragMove, { passive: false });
+      window.addEventListener("pointerup", handlePaletteDragUp, { passive: false });
+      window.addEventListener("pointercancel", handlePaletteDragCancel, { passive: false });
+      render();
+    }
+
+    function isOverStageClient(ev) {
+      const r = stage.getBoundingClientRect();
+      return ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+    }
+
+    function updateDragPreview(ev) {
+      if (!state.draggingPart) return;
+      if (!state.dragPreviewEl) {
+        const el = document.createElement("div");
+        el.className = "drag-preview";
+        document.body.appendChild(el);
+        state.dragPreviewEl = el;
+      }
+      const part = state.draggingPart;
+      state.dragPreviewEl.innerHTML = makeSvgMarkup(part, part.width, part.height, state.ghost || currentColors());
+      state.dragPreviewEl.style.left = ev.clientX + "px";
+      state.dragPreviewEl.style.top = ev.clientY + "px";
+      state.dragPreviewEl.style.transform = "translate(-50%,-50%) rotate(" + ((state.ghost && state.ghost.rotation) || 0) + "deg)";
+    }
+
+    function clearDragPreview() {
+      unlockPageScroll();
+      if (state.dragPreviewEl) {
+        state.dragPreviewEl.remove();
+        state.dragPreviewEl = null;
+      }
+    }
+
+    function updatePaletteDrag(ev) {
+      if (!state.ghost || !state.draggingPart) return;
+      updateDragPreview(ev);
+      if (isOverStageClient(ev)) {
+        state.ghost.visible = true;
+        updateGhost(screenToWorld(ev));
+      } else {
+        state.ghost.visible = false;
+        state.ghost.snapCandidate = null;
+      }
+    }
+
+    function handlePaletteDragMove(ev) {
+      if (!state.paletteDrag) return;
+      ev.preventDefault();
+      updatePaletteDrag(ev);
+      render();
+    }
+
+    function cleanupPaletteDragListeners() {
+      window.removeEventListener("pointermove", handlePaletteDragMove);
+      window.removeEventListener("pointerup", handlePaletteDragUp);
+      window.removeEventListener("pointercancel", handlePaletteDragCancel);
+    }
+
+    function cleanupConnectionsAfterTransform(selectedIds) {
+      state.connections = state.connections.filter(c => {
+        const aSelected = selectedIds.has(c.a.instanceId);
+        const bSelected = selectedIds.has(c.b.instanceId);
+
+        // Connections that are not affected by the transformed selection stay untouched.
+        if (!aSelected && !bSelected) return true;
+
+        // Connections inside the transformed selection stay valid as a group relation.
+        if (aSelected && bSelected) return true;
+
+        const instA = state.placed.find(i => i.id === c.a.instanceId);
+        const instB = state.placed.find(i => i.id === c.b.instanceId);
+        if (!instA || !instB) return false;
+
+        const a = worldSnapPoints(instA).find(sp => sp.snapId === c.a.snapId);
+        const b = worldSnapPoints(instB).find(sp => sp.snapId === c.b.snapId);
+        if (!a || !b) return false;
+
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        return dist <= 1 && oppositeDirections(a.direction, b.direction);
+      });
+    }
+
+    function getSelectionIds() {
+      return new Set(state.moveExisting ? state.moveExisting.ids : state.selection);
+    }
+
+    function getInstancesByIds(ids) {
+      return state.placed.filter(inst => ids.has(inst.id));
+    }
+
+    function getInstancesBounds(instances) {
+      return instances.reduce((bounds, inst) => {
+        const b = instanceBounds(inst);
+        if (!bounds) return { ...b };
+        bounds.x1 = Math.min(bounds.x1, b.x1);
+        bounds.y1 = Math.min(bounds.y1, b.y1);
+        bounds.x2 = Math.max(bounds.x2, b.x2);
+        bounds.y2 = Math.max(bounds.y2, b.y2);
+        return bounds;
+      }, null);
+    }
+
+    function getInstancesCenter(instances) {
+      const b = getInstancesBounds(instances);
+      return b
+        ? { x: (b.x1 + b.x2) / 2, y: (b.y1 + b.y2) / 2 }
+        : { x: 0, y: 0 };
+    }
+
+    function rotateInstanceRotation(inst, step) {
+      inst.rotation = inst.mirrored
+        ? (inst.rotation - step + 360) % 360
+        : (inst.rotation + step + 360) % 360;
+    }
+
+    function rotateInstances(instances, step) {
+      if (instances.length > 1) {
+        const center = getInstancesCenter(instances);
+        const rad = step * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+
+        instances.forEach(inst => {
+          const dx = inst.x - center.x;
+          const dy = inst.y - center.y;
+          inst.x = center.x + dx * cos - dy * sin;
+          inst.y = center.y + dx * sin + dy * cos;
+          rotateInstanceRotation(inst, step);
+        });
+      } else {
+        instances.forEach(inst => rotateInstanceRotation(inst, step));
+      }
+    }
+
+    function mirrorInstances(instances) {
+      const center = getInstancesCenter(instances);
+      instances.forEach(inst => {
+        inst.x = center.x - (inst.x - center.x);
+        inst.mirrored = !inst.mirrored;
+      });
+    }
+
+    function rebaseMoveExisting(instances) {
+      if (!state.moveExisting) return;
+
+      if (state.pointer) {
+        state.moveExisting.startPointer = { x: state.pointer.x, y: state.pointer.y };
+      }
+
+      state.moveExisting.starts = instances.map(inst => ({
+        id: inst.id,
+        x: inst.x,
+        y: inst.y
+      }));
+
+      state.moveExisting.snapCandidate = null;
+    }
+
+    function finishTransform(selectedIds, selected, options = {}) {
+      const { duringMove = false, autoConnect = true } = options;
+
+      cleanupConnectionsAfterTransform(selectedIds);
+      if (autoConnect) autoConnectAllTouchingSnaps(selectedIds);
+
+      if (duringMove) {
+        rebaseMoveExisting(selected);
+        state.moveExisting.connectionsCleared = false;
+      }
+    }
+
+    function handlePaletteDragUp(ev) {
+      if (!state.paletteDrag) return;
+      ev.preventDefault();
+      updatePaletteDrag(ev);
+      if (isOverStageClient(ev)) {
+        placeGhost();
+      } else {
+        cancelPlacing();
+      }
+      cleanupPaletteDragListeners();
+      unlockPageScroll();
+    }
+
+    function handlePaletteDragCancel(ev) {
+      if (!state.paletteDrag) return;
+      ev.preventDefault();
+      cancelPlacing();
+      cleanupPaletteDragListeners();
+      unlockPageScroll();
+    }
+
+    function cancelPlacing() {
+      unlockPageScroll();
+      state.mode = "idle";
+      state.paletteDrag = false;
+      state.draggingPart = null;
+      state.ghost = null;
+      clearDragPreview();
+      render();
+    }
+
+    function mirrorSelected() {
+      if (!state.selection || state.selection.size === 0) return;
+
+      const selectedIds = getSelectionIds();
+      const selected = getInstancesByIds(selectedIds);
+      if (!selected.length) return;
+
+      const duringMove = !!state.moveExisting;
+      if (!duringMove) saveState();
+      else if (!state.moveExisting.historySaved) {
+        saveState();
+        state.moveExisting.historySaved = true;
+      }
+
+      mirrorInstances(selected);
+      finishTransform(selectedIds, selected, { duringMove });
+      render();
+    }
+
+    function duplicateSelected() {
+      if (!state.selection || state.selection.size === 0) return;
+      saveState();
+
+      const ids = new Set(state.selection);
+      const selected = state.placed.filter(inst => ids.has(inst.id));
+      if (selected.length === 0) return;
+
+      const idMap = new Map();
+      const newIds = [];
+
+      for (const inst of selected) {
+        const newId = "i" + state.nextId++;
+        idMap.set(inst.id, newId);
+        newIds.push(newId);
+        state.placed.push({
+          ...JSON.parse(JSON.stringify(inst)),
+          id: newId,
+          x: inst.x + 50,
+          y: inst.y + 50
+        });
+      }
+
+      for (const c of state.connections) {
+        if (idMap.has(c.a.instanceId) && idMap.has(c.b.instanceId)) {
+          state.connections.push({
+            a: { instanceId: idMap.get(c.a.instanceId), snapId: c.a.snapId },
+            b: { instanceId: idMap.get(c.b.instanceId), snapId: c.b.snapId }
+          });
+        }
+      }
+
+      state.selection = new Set(newIds);
+      render();
+    }
+
+    function rotateActive(stepOverride) {
+      if (state.mode === "placing" && state.ghost) {
+        const step = stepOverride ?? (state.draggingPart.rotationStep || 90);
+        state.ghost.rotation = (state.ghost.rotation + step + 360) % 360;
+        if (state.paletteDrag && state.dragPreviewEl) {
+          state.dragPreviewEl.style.transform = `translate(-50%,-50%) scale(${state.ghost.mirrored ? -1 : 1}, 1) rotate(${state.ghost.rotation || 0}deg)`;
+        }
+        if (state.ghost.visible) updateGhost(state.pointer);
+        render();
+        return;
+      }
+
+      if (!state.selection || state.selection.size === 0) return;
+
+      const selectedIds = getSelectionIds();
+      const selected = getInstancesByIds(selectedIds);
+      if (!selected.length) return;
+
+      const duringMove = !!state.moveExisting;
+      const part = selected.length === 1 ? getPart(selected[0].partId) : null;
+      const step = stepOverride ?? (part?.rotationStep || 90);
+
+      if (!duringMove) saveState();
+      else if (!state.moveExisting.historySaved) {
+        saveState();
+        state.moveExisting.historySaved = true;
+      }
+
+      rotateInstances(selected, step);
+      finishTransform(selectedIds, selected, { duringMove });
+      render();
+    }
+
+
+
+    function setSelectionTool(enabled) {
+      state.tool = enabled ? "select" : "edit";
+      state.selectBox = null;
+      const btn = $("#selectModeBtn");
+      if (btn) {
+        btn.classList.toggle("tool-active", state.tool === "select");
+        btn.textContent = state.tool === "select" ? "Auswahl: AN" : "Auswahl";
+      }
+      render();
+    }
+
+    function pointerDistance(a, b) { return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
+    function pointerMidpoint(a, b) { return { clientX: (a.clientX + b.clientX) / 2, clientY: (a.clientY + b.clientY) / 2 }; }
+
+    function resetPointerState() {
+      state.activePointers.clear();
+      state.pinch = null;
+      state.isMultiTouch = false;
+      state.panning = false;
+      state.panStart = null;
+      state.selectBox = null;
+      state.moveExisting = null;
+
+      window.removeEventListener("pointermove", handleExistingMoveWindow);
+      window.removeEventListener("pointerup", handleExistingUpWindow);
+      window.removeEventListener("pointercancel", handleExistingUpWindow);
+
+      document.body.classList.remove("drop-delete-active");
+      render();
+    }
+
+    function beginPinchIfNeeded() {
+      if (state.activePointers.size < 2) return;
+      const pts = [...state.activePointers.values()].slice(0, 2);
+      const mid = pointerMidpoint(pts[0], pts[1]);
+      state.pinch = {
+        lastDist: Math.max(10, pointerDistance(pts[0], pts[1])),
+        lastMid: mid
+      };
+      state.selectBox = null;
+      state.moveExisting = null;
+    }
+
+    function updatePinch() {
+      if (!state.pinch || state.activePointers.size < 2) return false;
+
+      const pts = [...state.activePointers.values()].slice(0, 2);
+      const mid = pointerMidpoint(pts[0], pts[1]);
+      const dist = Math.max(10, pointerDistance(pts[0], pts[1]));
+
+      const before = screenToWorld(mid);
+
+      const zoomRatio = dist / state.pinch.lastDist;
+      state.zoom = Math.min(3, Math.max(0.35, state.zoom * zoomRatio));
+
+      render();
+
+      const after = screenToWorld(mid);
+
+      state.pan.x += (after.x - before.x) * state.zoom;
+      state.pan.y += (after.y - before.y) * state.zoom;
+
+      state.pan.x += mid.clientX - state.pinch.lastMid.clientX;
+      state.pan.y += mid.clientY - state.pinch.lastMid.clientY;
+
+      state.pinch.lastDist = dist;
+      state.pinch.lastMid = mid;
+
+      render();
+      return true;
+    }
+
+    function updateGhost(pointerWorld) {
+      if (!state.ghost) return;
+      state.pointer = pointerWorld;
+      let x = pointerWorld.x, y = pointerWorld.y;
+      const candidate = findSnapCandidate(state.draggingPart, x, y, state.ghost.rotation, new Set(), new Set(), false)
+
+      if (candidate) {
+        x = candidate.x;
+        y = candidate.y;
+        state.ghost.snapCandidate = candidate;
+      } else {
+        state.ghost.snapCandidate = null;
+        if ($("#gridToggle").checked) {
+          x = snapGrid(x);
+          y = snapGrid(y);
+        }
+      }
+      state.ghost.x = x;
+      state.ghost.y = y;
+    }
+
+    function findSnapCandidate(part, x, y, rotation, excludeIds = new Set(), ignoreIds = new Set(), mirrored = false) {
+      let best = null;
+      const open = allOpenSnapPoints(excludeIds, ignoreIds);
+
+      for (const local of part.snapPoints) {
+        const rp = transformPoint(local, rotation, mirrored);
+
+        const localWorld = {
+          x: x + rp.x,
+          y: y + rp.y,
+          direction: transformDirection(local.direction, rotation, mirrored),
+          snapId: local.id
+        };
+
+        for (const target of open) {
+          if (!oppositeDirections(localWorld.direction, target.direction)) continue;
+
+          const dx = target.x - localWorld.x;
+          const dy = target.y - localWorld.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist <= CONFIG.snapDistance && (!best || dist < best.dist)) {
+            best = {
+              dist,
+              x: x + dx,
+              y: y + dy,
+              localSnapId: local.id,
+              target
+            };
+          }
+        }
+      }
+
+      return best;
+    }
+
+    function placeGhost() {
+      saveState();
+      if (!state.ghost || !state.draggingPart || !state.ghost.visible) {
+        cancelPlacing();
+        return;
+      }
+      const instance = {
+        id: "i" + state.nextId++,
+        partId: state.draggingPart.id,
+        x: state.ghost.x,
+        y: state.ghost.y,
+        rotation: state.ghost.rotation,
+        mainColor: state.ghost.mainColor || state.mainColor,
+        hookColor: state.ghost.hookColor || state.hookColor
+      };
+      state.placed.push(instance);
+      state.selection.clear();
+      state.selection.add(instance.id);
+
+      autoConnectAllTouchingSnaps(new Set([instance.id]));
+
+      state.mode = "idle";
+      state.paletteDrag = false;
+      state.draggingPart = null;
+      state.ghost = null;
+      clearDragPreview();
+      render();
+    }
+
+    function render() {
+      viewport.setAttribute("transform", `translate(${state.pan.x} ${state.pan.y}) scale(${state.zoom})`);
+      renderConnections();
+      renderShapes();
+      renderSnaps();
+      renderGhost();
+      renderSelectionBox();
+      updateSidebar();
+      updateCanvasActions();
+      updateSelectionSizeInfo();
+    }
+
+    function createPaletteUI(container, onPick, onCustom) {
+      container.innerHTML = "";
+
+      COLOR_PALETTES.forEach(palette => {
+        const label = document.createElement("div");
+        label.textContent = palette.name;
+        label.className = "palette-label";
+        container.appendChild(label);
+
+        const row = document.createElement("div");
+        row.className = "palette-row";
+
+        palette.colors.forEach(color => {
+          const swatch = document.createElement("div");
+          swatch.className = "palette-color";
+          swatch.style.background = color;
+
+          swatch.addEventListener("click", ev => {
+            ev.stopPropagation();
+            onPick(color);
+            container.classList.add("hidden");
+          });
+
+          row.appendChild(swatch);
+        });
+
+        container.appendChild(row);
+      });
+
+      const customBtn = document.createElement("button");
+      customBtn.type = "button";
+      customBtn.className = "palette-custom-btn";
+      customBtn.textContent = "Custom Color";
+      customBtn.addEventListener("pointerdown", ev => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        ev.stopImmediatePropagation();
+        onCustom();
+      });
+
+      customBtn.addEventListener("click", ev => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        ev.stopImmediatePropagation();
+      });
+
+      container.appendChild(customBtn);
+    }
+
+
+    function renderShapes() {
+      shapesLayer.innerHTML = "";
+
+      let selectedBounds = null;
+
+      for (const inst of state.placed) {
+        const part = getPart(inst.partId);
+        const g = document.createElementNS(svgNS, "g");
+
+        g.setAttribute("class", "placed-shape" + (state.selection.has(inst.id) ? " selected" : ""));
+        g.setAttribute("data-id", inst.id);
+        g.setAttribute("transform", `translate(${inst.x} ${inst.y}) scale(${inst.mirrored ? -1 : 1} 1) rotate(${inst.rotation})`);
+
+        g.appendChild(createNestedSvg(part, {
+          mainColor: inst.mainColor || "#a45858",
+          hookColor: inst.hookColor || "#5b3434"
+        }));
+
+        const outline = document.createElementNS(svgNS, "rect");
+        outline.setAttribute("class", "shape-outline");
+        outline.setAttribute("x", -part.width / 2);
+        outline.setAttribute("y", -part.height / 2);
+        outline.setAttribute("width", part.width);
+        outline.setAttribute("height", part.height);
+        outline.setAttribute("rx", 6);
+        g.appendChild(outline);
+
+        g.addEventListener("pointerdown", ev => {
+          if (ev.pointerType === "touch" && state.activePointers.size >= 2) return;
+          if (ev.button !== 0) return;
+
+          ev.preventDefault();
+          ev.stopPropagation();
+
+          if (state.mode === "placing") return;
+
+          const multiSelect = isMultiSelectEvent(ev);
+
+          if (state.tool === "select") {
+            if (multiSelect) {
+              if (state.selection.has(inst.id)) {
+                state.selection.delete(inst.id);
+              } else {
+                state.selection.add(inst.id);
+              }
+            } else {
+              state.selection.clear();
+              state.selection.add(inst.id);
+            }
+
+            render();
+            return;
+          }
+
+          if (multiSelect) {
+            if (state.selection.has(inst.id)) {
+              state.selection.delete(inst.id);
+            } else {
+              state.selection.add(inst.id);
+            }
+
+            render();
+            return;
+          }
+
+          if (!state.selection.has(inst.id)) {
+            state.selection.clear();
+            state.selection.add(inst.id);
+          }
+
+          const pointer = screenToWorld(ev);
+          state.pointer = pointer;
+          const ids = new Set(state.selection);
+
+          state.moveExisting = {
+            ids,
+            startPointer: pointer,
+            starts: state.placed
+              .filter(i => ids.has(i.id))
+              .map(i => ({ id: i.id, x: i.x, y: i.y })),
+            snapCandidate: null,
+            moved: false,
+            historySaved: false
+          };
+
+          window.addEventListener("pointermove", handleExistingMoveWindow, { passive: false });
+          window.addEventListener("pointerup", handleExistingUpWindow, { passive: false });
+          window.addEventListener("pointercancel", handleExistingUpWindow, { passive: false });
+
+          render();
+        });
+
+        shapesLayer.appendChild(g);
+
+        if (state.selection.has(inst.id)) {
+          const b = instanceBounds(inst);
+
+          if (!selectedBounds) {
+            selectedBounds = { ...b };
+          } else {
+            selectedBounds.x1 = Math.min(selectedBounds.x1, b.x1);
+            selectedBounds.y1 = Math.min(selectedBounds.y1, b.y1);
+            selectedBounds.x2 = Math.max(selectedBounds.x2, b.x2);
+            selectedBounds.y2 = Math.max(selectedBounds.y2, b.y2);
+          }
+        }
+      }
+
+      // Rotate-Buttons erst nach allen Shapes rendern = immer oberste Ebene
+      if (selectedBounds) {
+        const b = selectedBounds;
+        const centerX = (b.x1 + b.x2) / 2;
+        const btnY = b.y1 - 24;
+
+        const rotateX = centerX - 16;
+        const duplicateX = centerX + 16;
+
+
+        const rotateBtn = document.createElementNS(svgNS, "g");
+        rotateBtn.setAttribute("class", "rotate-handle");
+        rotateBtn.setAttribute("transform", `translate(${rotateX} ${btnY})`);
+        rotateBtn.style.cursor = "pointer";
+
+        const circle = document.createElementNS(svgNS, "circle");
+        circle.setAttribute("r", 13);
+        circle.setAttribute("fill", "white");
+        circle.setAttribute("stroke", "#4b7bec");
+        circle.setAttribute("stroke-width", "2");
+
+        const text = document.createElementNS(svgNS, "text");
+        text.setAttribute("x", "0");
+        text.setAttribute("y", "5");
+        text.setAttribute("text-anchor", "middle");
+        text.setAttribute("font-size", "14");
+        text.setAttribute("font-weight", "700");
+        text.setAttribute("fill", "#4b7bec");
+        text.textContent = "↻";
+
+        rotateBtn.appendChild(circle);
+        rotateBtn.appendChild(text);
+
+        rotateBtn.addEventListener("pointerdown", ev => {
+          if (ev.button !== 0) return; // 👈 nur Linksklick
+
+          ev.preventDefault();
+          ev.stopPropagation();
+          rotateActive();
+        });
+
+        shapesLayer.appendChild(rotateBtn);
+
+        const duplicateBtn = document.createElementNS(svgNS, "g");
+        duplicateBtn.setAttribute("class", "duplicate-handle");
+        duplicateBtn.setAttribute("transform", `translate(${duplicateX} ${btnY})`);
+        duplicateBtn.style.cursor = "pointer";
+
+        const dCircle = document.createElementNS(svgNS, "circle");
+        dCircle.setAttribute("r", 13);
+        dCircle.setAttribute("fill", "white");
+        dCircle.setAttribute("stroke", "#3ba76d");
+        dCircle.setAttribute("stroke-width", "2");
+
+        const dIcon = document.createElementNS(svgNS, "g");
+
+        // hinteres Rechteck
+        const r1 = document.createElementNS(svgNS, "rect");
+        r1.setAttribute("x", "-6");
+        r1.setAttribute("y", "-6");
+        r1.setAttribute("width", "10");
+        r1.setAttribute("height", "10");
+        r1.setAttribute("rx", "2");
+        r1.setAttribute("fill", "none");
+        r1.setAttribute("stroke", "#3ba76d");
+        r1.setAttribute("stroke-width", "1.5");
+
+        // vorderes Rechteck (leicht versetzt)
+        const r2 = document.createElementNS(svgNS, "rect");
+        r2.setAttribute("x", "-3");
+        r2.setAttribute("y", "-3");
+        r2.setAttribute("width", "10");
+        r2.setAttribute("height", "10");
+        r2.setAttribute("rx", "2");
+        r2.setAttribute("fill", "white"); // 👈 wichtig
+        r2.setAttribute("stroke", "#3ba76d");
+        r2.setAttribute("stroke-width", "1.5");
+
+        dIcon.appendChild(r1);
+        dIcon.appendChild(r2);
+
+        duplicateBtn.appendChild(dCircle);
+        duplicateBtn.appendChild(dIcon);
+
+        duplicateBtn.addEventListener("pointerdown", ev => {
+          if (ev.button !== 0) return; // 👈 nur Linksklick
+
+          ev.preventDefault();
+          ev.stopPropagation();
+          duplicateSelected();
+        });
+
+        shapesLayer.appendChild(duplicateBtn);
+      }
+    }
+
+    function isMultiSelectEvent(ev) {
+      return ev.ctrlKey || ev.metaKey || ev.shiftKey;
+    }
+
+    function renderSnaps() {
+      snapLayer.innerHTML = "";
+      const placingVisible = state.mode === "placing" && state.ghost && state.ghost.visible;
+      const shouldShow = placingVisible || state.selection.size > 0;
+      if (!shouldShow) return;
+
+      for (const sp of allOpenSnapPoints()) {
+        drawSnap(sp.x, sp.y, "snap-open");
+      }
+
+      if (placingVisible) {
+        const part = state.draggingPart;
+        for (const local of part.snapPoints) {
+          const rp = rotatePoint(local, state.ghost.rotation);
+          drawSnap(state.ghost.x + rp.x, state.ghost.y + rp.y, state.ghost.snapCandidate ? "snap-valid" : "snap-active");
+        }
+      }
+    }
+
+    function renderGhost() {
+      ghostLayer.innerHTML = "";
+      if (!state.ghost || !state.draggingPart || !state.ghost.visible) return;
+      const part = state.draggingPart;
+      const g = document.createElementNS(svgNS, "g");
+      g.setAttribute("class", "ghost" + (state.ghost.snapCandidate ? " valid" : ""));
+      g.setAttribute("transform", `translate(${state.ghost.x} ${state.ghost.y}) rotate(${state.ghost.rotation})`);
+      g.appendChild(createNestedSvg(part, state.ghost));
+      ghostLayer.appendChild(g);
+    }
+
+
+    function renderSelectionBox() {
+      selectionLayer.innerHTML = "";
+      if (!state.selectBox) return;
+      const x = Math.min(state.selectBox.start.x, state.selectBox.current.x);
+      const y = Math.min(state.selectBox.start.y, state.selectBox.current.y);
+      const w = Math.abs(state.selectBox.current.x - state.selectBox.start.x);
+      const h = Math.abs(state.selectBox.current.y - state.selectBox.start.y);
+      const r = document.createElementNS(svgNS, "rect");
+      r.setAttribute("class", "selection-rect");
+      r.setAttribute("x", x);
+      r.setAttribute("y", y);
+      r.setAttribute("width", w);
+      r.setAttribute("height", h);
+      selectionLayer.appendChild(r);
+    }
+
+    function instanceBounds(inst) {
+      const part = getPart(inst.partId);
+      const odd = Math.abs(inst.rotation % 180) === 90;
+      const w = odd ? part.height : part.width;
+      const h = odd ? part.width : part.height;
+      return { x1: inst.x - w / 2, y1: inst.y - h / 2, x2: inst.x + w / 2, y2: inst.y + h / 2 };
+    }
+
+    function rectsIntersect(a, b) {
+      return a.x1 <= b.x2 && a.x2 >= b.x1 && a.y1 <= b.y2 && a.y2 >= b.y1;
+    }
+
+    function selectByBox(box) {
+      const x1 = Math.min(box.start.x, box.current.x);
+      const y1 = Math.min(box.start.y, box.current.y);
+      const x2 = Math.max(box.start.x, box.current.x);
+      const y2 = Math.max(box.start.y, box.current.y);
+      const w = x2 - x1;
+      const h = y2 - y1;
+      state.selection.clear();
+      if (w < 4 && h < 4) return;
+      const rect = { x1, y1, x2, y2 };
+      for (const inst of state.placed) {
+        if (rectsIntersect(rect, instanceBounds(inst))) {
+          state.selection.add(inst.id);
+        }
+      }
+    }
+
+    function clearConnectionsForMovedIds(ids) {
+      // Sobald ein Teil bewegt wird, gelten seine alten externen Snap-Verbindungen nicht mehr.
+      // Interne Verbindungen innerhalb einer gemeinsam verschobenen Auswahl bleiben erhalten.
+      state.connections = state.connections.filter(c => {
+        const aMoved = ids.has(c.a.instanceId);
+        const bMoved = ids.has(c.b.instanceId);
+        if (aMoved && bMoved) return true;
+        return !aMoved && !bMoved;
+      });
+    }
+
+    function findGroupSnapCandidate(ids) {
+      const selectedSnaps = state.placed
+        .filter(inst => ids.has(inst.id))
+        .flatMap(inst => worldSnapPoints(inst))
+        .filter(sp => !isSnapOccupied(sp.instanceId, sp.snapId, ids));
+
+      const openTargets = allOpenSnapPoints(ids, ids);
+
+      let best = null;
+
+      for (const local of selectedSnaps) {
+        for (const target of openTargets) {
+          if (!oppositeDirections(local.direction, target.direction)) continue;
+
+          const dx = target.x - local.x;
+          const dy = target.y - local.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist <= CONFIG.snapDistance && (!best || dist < best.dist)) {
+            best = {
+              dist,
+              dx,
+              dy,
+              local,
+              target
+            };
+          }
+        }
+      }
+
+      return best;
+    }
+
+    function moveSelected(pointerWorld) {
+      if (!state.moveExisting) return;
+      state.pointer = pointerWorld;
+
+      const dx = pointerWorld.x - state.moveExisting.startPointer.x;
+      const dy = pointerWorld.y - state.moveExisting.startPointer.y;
+      const hasMoved = Math.abs(dx) > 2 || Math.abs(dy) > 2;
+
+      if (hasMoved && !state.moveExisting.historySaved) {
+        saveState();
+        state.moveExisting.historySaved = true;
+      }
+      if (hasMoved && !state.moveExisting.connectionsCleared) {
+        clearConnectionsForMovedIds(state.moveExisting.ids);
+        state.moveExisting.connectionsCleared = true;
+      }
+      state.moveExisting.moved = hasMoved;
+
+      for (const start of state.moveExisting.starts) {
+        const inst = state.placed.find(i => i.id === start.id);
+        if (!inst) continue;
+        inst.x = start.x + dx;
+        inst.y = start.y + dy;
+      }
+
+      state.moveExisting.snapCandidate = null;
+
+      if (state.moveExisting.ids.size === 1) {
+        const id = [...state.moveExisting.ids][0];
+        const inst = state.placed.find(i => i.id === id);
+        if (!inst) return;
+
+        const part = getPart(inst.partId);
+        const candidate = findSnapCandidate(part, inst.x, inst.y, inst.rotation, new Set([id]), new Set([id]), inst.mirrored);
+
+        if (candidate) {
+          inst.x = candidate.x;
+          inst.y = candidate.y;
+          state.moveExisting.snapCandidate = candidate;
+        } else if ($("#gridToggle").checked) {
+          inst.x = snapGrid(inst.x);
+          inst.y = snapGrid(inst.y);
+        }
+
+        return;
+      }
+
+      const groupCandidate = findGroupSnapCandidate(state.moveExisting.ids);
+      if (groupCandidate) {
+        for (const start of state.moveExisting.starts) {
+          const inst = state.placed.find(i => i.id === start.id);
+          if (!inst) continue;
+          inst.x += groupCandidate.dx;
+          inst.y += groupCandidate.dy;
+        }
+        state.moveExisting.snapCandidate = groupCandidate;
+        return;
+      }
+
+      if ($("#gridToggle").checked) {
+        const first = state.moveExisting.starts[0];
+        const firstInst = first && state.placed.find(i => i.id === first.id);
+        if (!firstInst) return;
+
+        const gx = snapGrid(first.x + dx) - (first.x + dx);
+        const gy = snapGrid(first.y + dy) - (first.y + dy);
+
+        for (const start of state.moveExisting.starts) {
+          const inst = state.placed.find(i => i.id === start.id);
+          if (!inst) continue;
+          inst.x = start.x + dx + gx;
+          inst.y = start.y + dy + gy;
+        }
+      }
+    }
+
+    function connectionExists(aInstanceId, aSnapId, bInstanceId, bSnapId) {
+      return state.connections.some(c =>
+        (c.a.instanceId === aInstanceId && c.a.snapId === aSnapId && c.b.instanceId === bInstanceId && c.b.snapId === bSnapId) ||
+        (c.a.instanceId === bInstanceId && c.a.snapId === bSnapId && c.b.instanceId === aInstanceId && c.b.snapId === aSnapId)
+      );
+    }
+
+    function addConnection(aInstanceId, aSnapId, target) {
+      if (!target) return;
+      if (connectionExists(aInstanceId, aSnapId, target.instanceId, target.snapId)) return;
+      state.connections.push({
+        a: { instanceId: aInstanceId, snapId: aSnapId },
+        b: { instanceId: target.instanceId, snapId: target.snapId }
+      });
+    }
+
+    function autoConnectAllTouchingSnaps(ids) {
+      const movedSnaps = state.placed
+        .filter(inst => ids.has(inst.id))
+        .flatMap(inst => worldSnapPoints(inst))
+        .filter(sp => !isSnapOccupied(sp.instanceId, sp.snapId));
+
+      const targets = allOpenSnapPoints(ids, ids);
+
+      for (const local of movedSnaps) {
+        if (isSnapOccupied(local.instanceId, local.snapId)) continue;
+
+        let best = null;
+
+        for (const target of targets) {
+          if (ids.has(target.instanceId)) continue;
+          if (isSnapOccupied(target.instanceId, target.snapId)) continue;
+          if (!oppositeDirections(local.direction, target.direction)) continue;
+
+          const dist = Math.hypot(target.x - local.x, target.y - local.y);
+
+          if (dist <= CONFIG.snapDistance && (!best || dist < best.dist)) {
+            best = { dist, target };
+          }
+        }
+
+        if (best) {
+          addConnection(local.instanceId, local.snapId, best.target);
+        }
+      }
+    }
+
+    function finishMoveSelected() {
+      if (!state.moveExisting) return;
+      const ids = state.moveExisting.ids;
+
+      if (state.moveExisting.moved) {
+        autoConnectAllTouchingSnaps(ids);
+      }
+
+      state.moveExisting = null;
+    }
+
+    function drawSnap(x, y, cls) {
+      const c = document.createElementNS(svgNS, "circle");
+      c.setAttribute("class", `snap-point ${cls}`);
+      c.setAttribute("cx", x);
+      c.setAttribute("cy", y);
+      c.setAttribute("r", 5);
+      snapLayer.appendChild(c);
+    }
+
+    function renderConnections() {
+      connectionsLayer.innerHTML = "";
+      for (const conn of state.connections) {
+        const aInst = state.placed.find(i => i.id === conn.a.instanceId);
+        const bInst = state.placed.find(i => i.id === conn.b.instanceId);
+        if (!aInst || !bInst) continue;
+        const a = worldSnapPoints(aInst).find(s => s.snapId === conn.a.snapId);
+        const b = worldSnapPoints(bInst).find(s => s.snapId === conn.b.snapId);
+        if (!a || !b) continue;
+        const line = document.createElementNS(svgNS, "line");
+        line.setAttribute("class", "connection-line");
+        line.setAttribute("x1", a.x); line.setAttribute("y1", a.y);
+        line.setAttribute("x2", b.x); line.setAttribute("y2", b.y);
+        connectionsLayer.appendChild(line);
+      }
+    }
+
+
+    function updateCanvasActions() {
+      const actions = $("#canvasActions");
+      if (!actions) return;
+
+      const hasSelection = state.selection && state.selection.size > 0;
+      actions.classList.toggle("visible", hasSelection);
+
+      if (!hasSelection) {
+        closeAllColorDropdowns();
+        return;
+      }
+
+      const firstId = [...state.selection][0];
+      const first = state.placed.find(p => p.id === firstId);
+      if (!first) return;
+
+      const mainColor = first.mainColor || "#a45858";
+      const hookColor = first.hookColor || "#5b3434";
+
+      const mainPicker = $("#selectedMainColorPicker");
+      const hookPicker = $("#selectedHookColorPicker");
+      const mainPreview = $("#mainColorPreview");
+      const hookPreview = $("#hookColorPreview");
+
+      if (mainPicker) mainPicker.value = mainColor;
+      if (hookPicker) hookPicker.value = hookColor;
+      if (mainPreview) mainPreview.style.background = mainColor;
+      if (hookPreview) hookPreview.style.background = hookColor;
+    }
+
+    function updateSidebar() {
+      $("#partCount").textContent = state.placed.length;
+      $("#selectionCount").textContent = state.selection.size;
+      $("#connectionCount").textContent = state.connections.length;
+      $("#bom").innerHTML = makeBomText();
+    }
+
+    function makeBomText() {
+      if (!state.mountConfig) {
+        return "Please select a wall mount option first.";
+      }
+
+      if (state.placed.length === 0) {
+        return "No parts placed yet.";
+      }
+
+      const hookParts = {};
+      const connectorParts = {};
+      const endParts = {};
+
+      let hookPartCount = 0;
+
+      for (const inst of state.placed) {
+        const part = getPart(inst.partId);
+
+        if (part.category === "hook") {
+          hookParts[part.name] = (hookParts[part.name] || 0) + 1;
+          hookPartCount++;
+        } else if (part.category === "connector") {
+          connectorParts[part.name] = (connectorParts[part.name] || 0) + 1;
+        } else if (part.category === "end") {
+          endParts[part.name] = (endParts[part.name] || 0) + 1;
+        }
+      }
+
+      const lines = [];
+
+      // ---- PARTS ----
+
+
+      if (Object.keys(hookParts).length) {
+        lines.push("<strong>Hook Parts:</strong>");
+        for (const [name, count] of Object.entries(hookParts)) {
+          lines.push(`  ${count}x ${name}`);
+        }
+      }
+
+      if (Object.keys(connectorParts).length) {
+        lines.push("");
+        lines.push("<strong>Connector Parts:</strong>");
+        for (const [name, count] of Object.entries(connectorParts)) {
+          lines.push(`  ${count}x ${name}`);
+        }
+      }
+
+      if (Object.keys(endParts).length) {
+        lines.push("");
+        lines.push("<strong>End Parts:</strong>");
+        for (const [name, count] of Object.entries(endParts)) {
+          lines.push(`  ${count}x ${name}`);
+        }
+      }
+
+      // ---- WALL MOUNTS ----
+      if (hookPartCount > 0) {
+        lines.push("");
+        lines.push("<strong>Wall Mounts:</strong>");
+
+        if (state.mountConfig === "countersunk") {
+          lines.push(`${hookPartCount}x Wall Mount – Countersunk`);
+        } else if (state.mountConfig === "roundhead") {
+          lines.push(`${hookPartCount}x Wall Mount – Round Head`);
+        } else if (state.mountConfig === "tape") {
+          lines.push(`${hookPartCount}x Double-Sided Tape`);
+        }
+      }
+
+      // ---- CONNECTION PIECES ----
+      const openSnapCount = state.placed
+        .flatMap(inst => worldSnapPoints(inst))
+        .filter(sp => !isSnapOccupied(sp.instanceId, sp.snapId))
+        .length;
+
+      const fullConnectionPieces = state.connections.length;
+      const halfConnectionPieces = openSnapCount;
+
+      if (fullConnectionPieces > 0 || halfConnectionPieces > 0) {
+        lines.push("");
+        lines.push("<strong>Connection Pieces:</strong>");
+
+        if (fullConnectionPieces > 0) {
+          lines.push(`${fullConnectionPieces}x Full Connection Piece`);
+        }
+
+        if (halfConnectionPieces > 0) {
+          lines.push(`${halfConnectionPieces}x Half Connection Piece`);
+        }
+      }
+
+      return lines.join("<br>");
+    }
+
+    function deleteSelected() {
+      if (state.selection.size === 0) return;
+      saveState();
+      const ids = new Set(state.selection);
+      state.placed = state.placed.filter(i => !ids.has(i.id));
+      state.connections = state.connections.filter(c => !ids.has(c.a.instanceId) && !ids.has(c.b.instanceId));
+      state.selection.clear();
+      render();
+    }
+
+
+    function isOverLeftPanelClient(ev) {
+      const left = $("#leftbar");
+      if (!left) return false;
+      const r = left.getBoundingClientRect();
+      return ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+    }
+
+    function deleteMovedSelectionAfterDrop() {
+      if (!state.moveExisting) return;
+      const ids = new Set(state.moveExisting.ids);
+      state.placed = state.placed.filter(i => !ids.has(i.id));
+      state.connections = state.connections.filter(c => !ids.has(c.a.instanceId) && !ids.has(c.b.instanceId));
+      state.selection.clear();
+      state.moveExisting = null;
+      document.body.classList.remove("drop-delete-active");
+    }
+
+    function handleExistingMoveWindow(ev) {
+      if (state.paletteDrag) return;
+
+      if (ev.pointerType === "touch") {
+        state.activePointers.set(ev.pointerId, {
+          clientX: ev.clientX,
+          clientY: ev.clientY,
+          pointerId: ev.pointerId
+        });
+
+        if (state.activePointers.size >= 2) {
+          ev.preventDefault();
+
+          state.isMultiTouch = true;
+          state.moveExisting = null;
+          state.selectBox = null;
+          document.body.classList.remove("drop-delete-active");
+
+          beginPinchIfNeeded();
+          updatePinch();
+          return;
+        }
+      }
+
+      if (!state.moveExisting) return;
+      ev.preventDefault();
+
+      const p = screenToWorld(ev);
+      moveSelected(p);
+
+      if (state.moveExisting && state.moveExisting.moved && isOverLeftPanelClient(ev)) {
+        document.body.classList.add("drop-delete-active");
+      } else {
+        document.body.classList.remove("drop-delete-active");
+      }
+
+      render();
+    }
+
+    function handleExistingUpWindow(ev) {
+      if (!state.moveExisting) return;
+      ev.preventDefault();
+      const p = screenToWorld(ev);
+      moveSelected(p);
+
+      if (state.moveExisting && state.moveExisting.moved && isOverLeftPanelClient(ev)) {
+        deleteMovedSelectionAfterDrop();
+      } else {
+        finishMoveSelected();
+      }
+
+      window.removeEventListener("pointermove", handleExistingMoveWindow);
+      window.removeEventListener("pointerup", handleExistingUpWindow);
+      window.removeEventListener("pointercancel", handleExistingUpWindow);
+      state.activePointers.delete(ev.pointerId);
+      if (state.activePointers.size < 2) state.pinch = null;
+      state.panning = false;
+      document.body.classList.remove("drop-delete-active");
+      render();
+    }
+
+
+    stage.addEventListener("pointermove", ev => {
+      if (state.paletteDrag) return;
+
+      if (state.activePointers.has(ev.pointerId)) {
+        state.activePointers.set(ev.pointerId, {
+          clientX: ev.clientX,
+          clientY: ev.clientY,
+          pointerId: ev.pointerId
+        });
+      }
+
+      if (updatePinch()) return;
+
+      const p = screenToWorld(ev);
+      state.pointer = p;
+
+      if (state.mode === "placing") {
+        updateGhost(p);
+        render();
+
+      } else if (state.selectBox) {
+        state.selectBox.current = p;
+        selectByBox(state.selectBox);
+        render();
+
+      } else if (state.panning && state.panStart) {
+        state.pan.x = state.panStart.panX + (ev.clientX - state.panStart.clientX) * PAN_SENSITIVITY;
+        state.pan.y = state.panStart.panY + (ev.clientY - state.panStart.clientY) * PAN_SENSITIVITY;
+        render();
+
+      } else if (state.moveExisting) {
+        moveSelected(p);
+        render();
+      }
+    });
+
+    stage.addEventListener("pointerup", ev => {
+      if (state.paletteDrag) return;
+
+      const wasMultiTouch = state.isMultiTouch;
+
+      state.activePointers.delete(ev.pointerId);
+
+      if (state.activePointers.size < 2) {
+        state.pinch = null;
+        state.isMultiTouch = false;
+      }
+
+      if (wasMultiTouch) {
+        state.panning = false;
+        return;
+      }
+
+      if (state.mode === "placing") {
+        const p = screenToWorld(ev);
+        updateGhost(p);
+        placeGhost();
+      } else if (state.moveExisting) {
+        finishMoveSelected();
+        render();
+      } else if (state.selectBox) {
+        selectByBox(state.selectBox);
+        state.selectBox = null;
+        render();
+      }
+
+      state.panning = false;
+    });
+
+    stage.addEventListener("pointercancel", ev => {
+      state.activePointers.delete(ev.pointerId);
+      if (state.activePointers.size < 2) state.pinch = null;
+      state.panning = false;
+    });
+
+    stage.addEventListener("pointerdown", ev => {
+      if (state.activePointers.size > 0 && ev.pointerType === "touch") {
+        // Falls iPad einen alten Finger hängen gelassen hat:
+        state.activePointers.clear();
+        state.pinch = null;
+        state.isMultiTouch = false;
+      }
+
+      if (state.paletteDrag) return;
+      if (ev.pointerType !== "touch") return;
+
+      state.activePointers.set(ev.pointerId, {
+        clientX: ev.clientX,
+        clientY: ev.clientY,
+        pointerId: ev.pointerId
+      });
+
+      // WICHTIG: Bei nur 1 Finger NICHTS blockieren
+      if (state.activePointers.size < 2) return;
+
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      state.isMultiTouch = true;
+      state.moveExisting = null;
+      state.selectBox = null;
+      state.panning = false;
+      state.panStart = null;
+
+      window.removeEventListener("pointermove", handleExistingMoveWindow);
+      window.removeEventListener("pointerup", handleExistingUpWindow);
+      window.removeEventListener("pointercancel", handleExistingUpWindow);
+
+      document.body.classList.remove("drop-delete-active");
+
+      beginPinchIfNeeded();
+    }, { capture: true, passive: false });
+
+    stage.addEventListener("pointerdown", ev => {
+      if (state.paletteDrag) return;
+      state.activePointers.set(ev.pointerId, { clientX: ev.clientX, clientY: ev.clientY, pointerId: ev.pointerId });
+
+      if (ev.pointerType === "touch" && state.activePointers.size >= 2) {
+        state.isMultiTouch = true;
+        state.moveExisting = null;
+        state.selectBox = null;
+
+        window.removeEventListener("pointermove", handleExistingMoveWindow);
+        window.removeEventListener("pointerup", handleExistingUpWindow);
+        window.removeEventListener("pointercancel", handleExistingUpWindow);
+
+        beginPinchIfNeeded();
+        return;
+      }
+
+      if (state.mode === "placing") return;
+      const onCanvasBackground = ev.target === stage || ev.target.closest("#viewport") === viewport;
+      if (!onCanvasBackground) return;
+
+      if (ev.button === 1) {
+        state.panning = true;
+        state.panStart = { clientX: ev.clientX, clientY: ev.clientY, panX: state.pan.x, panY: state.pan.y };
+        return;
+      }
+
+      if (ev.button === 0) {
+        ev.preventDefault();
+        const p = screenToWorld(ev);
+        state.selectBox = { start: p, current: p };
+        state.selection.clear();
+        stage.setPointerCapture?.(ev.pointerId);
+        render();
+      }
+    });
+
+    stage.addEventListener("wheel", ev => {
+      ev.preventDefault();
+      const scale = ev.deltaY < 0 ? 1.08 : 0.92;
+      const before = screenToWorld(ev);
+      state.zoom = Math.min(3, Math.max(0.35, state.zoom * scale));
+      render();
+      const after = screenToWorld(ev);
+      state.pan.x += (after.x - before.x) * state.zoom;
+      state.pan.y += (after.y - before.y) * state.zoom;
+      render();
+    }, { passive: false });
+
+
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+    function choice(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    function rotatedSnapPoint(sp, rotation) {
+      const rp = rotatePoint(sp, rotation);
+      return {
+        id: sp.id,
+        x: rp.x,
+        y: rp.y,
+        direction: rotateDirection(sp.direction, rotation)
+      };
+    }
+    function wouldOverlap(candidate) {
+      // Hitbox/Overlap-Prüfung für Random deaktiviert.
+      // Die Formen dürfen sich dadurch wieder frei überlagern/verschneiden,
+      // was bei diesem geometrischen Flow-System oft besser aussieht.
+      return false;
+    }
+    function getOpenSnapPointsForRandom() {
+      return state.placed.flatMap(inst => {
+        const part = getPart(inst.partId);
+        return part.snapPoints.map(sp => {
+          const rp = rotatePoint(sp, inst.rotation);
+          return {
+            instanceId: inst.id,
+            snapId: sp.id,
+            x: inst.x + rp.x,
+            y: inst.y + rp.y,
+            direction: rotateDirection(sp.direction, inst.rotation)
+          };
+        }).filter(sp => !isSnapOccupied(sp.instanceId, sp.snapId));
+      });
+    }
+    function findPlacementForPartAtSnap(part, targetSnap) {
+      // Aggressiv testen: alle Snap-Punkte + alle Rotationen,
+      // damit auch schwierigere Teile wie Dreieck, Quadrat, Endteil usw. eine Chance haben.
+      const rotations = shuffle([0, 90, 180, 270]);
+      const snapPoints = shuffle(part.snapPoints);
+
+      for (const local of snapPoints) {
+        for (const rotation of rotations) {
+          const rsp = rotatedSnapPoint(local, rotation);
+          if (!oppositeDirections(rsp.direction, targetSnap.direction)) continue;
+
+          const candidate = {
+            id: "i" + state.nextId,
+            partId: part.id,
+            x: targetSnap.x - rsp.x,
+            y: targetSnap.y - rsp.y,
+            rotation,
+            mainColor: state.mainColor,
+            hookColor: state.hookColor
+          };
+
+          if (!wouldOverlap(candidate)) {
+            return {
+              instance: candidate,
+              localSnapId: local.id,
+              target: targetSnap
+            };
+          }
+        }
+      }
+
+      return null;
+    }
+
+    function weightedCandidateParts(targetCount) {
+      const placedCount = Math.max(1, state.placed.length);
+      const hookCount = state.placed.filter(inst => getPart(inst.partId).category === "hook").length;
+      const hookRatio = hookCount / placedCount;
+      const recentlyUsed = state.placed.slice(-3).map(p => p.partId);
+
+      const weighted = [];
+      for (const p of PARTS) {
+        let weight = 1;
+
+        // Connectoren sind gute Brücken, aber nicht nur Arc verwenden.
+        if (p.category === "connector") weight += 2;
+
+        // Haken sind wichtig, aber nicht zu viele direkt hintereinander.
+        if (p.category === "hook" && hookRatio < 0.45) weight += 2;
+
+        // Endteile eher spät, aber trotzdem möglich.
+        if (p.category === "end") {
+          weight += state.placed.length > targetCount * 0.65 ? 3 : 0;
+        }
+
+        // Schwierige/seltenere Formen bewusst pushen.
+        if (
+          p.id.includes("triangle") ||
+          p.id.includes("square") ||
+          p.id.includes("quarter") ||
+          p.id.includes("halfcircle") ||
+          p.id.includes("3quarter") ||
+          p.id.includes("end")
+        ) {
+          weight += 3;
+        }
+
+        // Wiederholungen reduzieren, aber nicht komplett verbieten.
+        if (recentlyUsed.includes(p.id)) weight -= 3;
+
+        weight = Math.max(1, weight);
+        for (let i = 0; i < weight; i++) weighted.push(p);
+      }
+
+      // Einmalige Reihenfolge mit Gewichtung.
+      const picked = [];
+      const seen = new Set();
+      for (const p of shuffle(weighted)) {
+        if (!seen.has(p.id)) {
+          picked.push(p);
+          seen.add(p.id);
+        }
+      }
+      return picked;
+    }
+
+    function clearForRandom() {
+      state.placed = [];
+      state.connections = [];
+      state.selection.clear();
+      state.moveExisting = null;
+      state.selectBox = null;
+      state.mode = "idle";
+      state.paletteDrag = false;
+      state.draggingPart = null;
+      state.ghost = null;
+      clearDragPreview();
+    }
+    function generateRandomDesign() {
+      saveState();
+      clearForRandom();
+
+      const hooks = PARTS.filter(p => p.category === "hook");
+      const connectors = PARTS.filter(p => p.category === "connector");
+
+      // Start nicht nur aus den leichtesten Formen: Hooks bevorzugen, aber gemischt.
+      const startPool = [...hooks, ...connectors, ...connectors];
+      const startPart = choice(startPool.length ? startPool : PARTS);
+
+      const start = {
+        id: "i" + state.nextId++,
+        partId: startPart.id,
+        x: 0,
+        y: 0,
+        rotation: choice([0, 90, 180, 270]),
+        mainColor: state.mainColor,
+        hookColor: state.hookColor
+      };
+      state.placed.push(start);
+
+      const targetCount = randInt(7, 15);
+      let globalAttempts = 0;
+
+      while (state.placed.length < targetCount && globalAttempts < 500) {
+        globalAttempts++;
+
+        let openSnaps = getOpenSnapPointsForRandom();
+        if (openSnaps.length === 0) break;
+
+        // Nicht nur einen offenen Snap nehmen. Mehrere Snap-Punkte testen,
+        // sonst bleibt der Generator an einem Dead-End hängen.
+        openSnaps = shuffle(openSnaps).sort((a, b) => {
+          // leichter Flow nach rechts/unten, aber mit Zufall
+          const bias = (b.x + b.y * 0.25) - (a.x + a.y * 0.25);
+          return Math.random() < 0.55 ? bias : Math.random() - 0.5;
+        });
+
+        let placed = false;
+        const candidateParts = weightedCandidateParts(targetCount);
+
+        for (const targetSnap of openSnaps) {
+          for (const part of candidateParts) {
+            const placement = findPlacementForPartAtSnap(part, targetSnap);
+            if (!placement) continue;
+
+            placement.instance.id = "i" + state.nextId++;
+            state.placed.push(placement.instance);
+            addConnection(placement.instance.id, placement.localSnapId, placement.target);
+            placed = true;
+            break;
+          }
+          if (placed) break;
+        }
+
+        // Wenn keine einzige Kombination passt, versuchen wir nicht kaputt weiterzubauen.
+        // Stattdessen stoppen wir erst nach mehreren echten Fehlversuchen.
+        if (!placed && globalAttempts > 80) break;
+      }
+
+      state.selection.clear();
+      if (state.placed.length) {
+        state.selection.add(state.placed[state.placed.length - 1].id);
+      }
+      render();
+    }
+
+
+    function serializeDesign() {
+      return {
+        name: "Flow Hook Design",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        placed: state.placed,
+        connections: state.connections,
+        selection: Array.from(state.selection),
+        pan: state.pan,
+        zoom: state.zoom,
+        nextId: state.nextId,
+        mainColor: state.mainColor,
+        hookColor: state.hookColor,
+        mountConfig: state.mountConfig
+      };
+    }
+
+    function loadDesignData(data) {
+      if (!data || !Array.isArray(data.placed)) {
+        alert("This file does not look like a valid Flow Hook design.");
+        return;
+      }
+
+      saveState();
+
+      state.placed = data.placed.map(p => ({
+        id: String(p.id),
+        partId: String(p.partId),
+        x: Number(p.x) || 0,
+        y: Number(p.y) || 0,
+        rotation: Number(p.rotation) || 0,
+        mirrored: !!p.mirrored,
+        mainColor: p.mainColor || data.mainColor || "#a45858",
+        hookColor: p.hookColor || data.hookColor || "#5b3434"
+      })).filter(p => getPart(p.partId));
+
+      const validIds = new Set(state.placed.map(p => p.id));
+      state.connections = Array.isArray(data.connections)
+        ? data.connections.filter(c =>
+          c && c.a && c.b &&
+          validIds.has(c.a.instanceId) &&
+          validIds.has(c.b.instanceId)
+        )
+        : [];
+
+      state.selection = new Set(
+        Array.isArray(data.selection)
+          ? data.selection.filter(id => validIds.has(id))
+          : []
+      );
+
+      state.pan = data.pan && Number.isFinite(Number(data.pan.x)) && Number.isFinite(Number(data.pan.y))
+        ? { x: Number(data.pan.x), y: Number(data.pan.y) }
+        : { x: stage.clientWidth / 2, y: stage.clientHeight / 2 };
+
+      state.zoom = Number.isFinite(Number(data.zoom)) ? Number(data.zoom) : 1;
+
+      if (data.mainColor) {
+        state.mainColor = data.mainColor;
+        const picker = $("#mainColorPicker");
+        if (picker) picker.value = data.mainColor;
+      }
+      if (data.hookColor) {
+        state.hookColor = data.hookColor;
+        const picker = $("#hookColorPicker");
+        if (picker) picker.value = data.hookColor;
+      }
+      if (data.mountConfig) {
+        state.mountConfig = data.mountConfig || null;
+      }
+
+      const maxIdNumber = state.placed
+        .map(p => parseInt(String(p.id).replace(/^i/, ""), 10))
+        .filter(n => Number.isFinite(n))
+        .reduce((max, n) => Math.max(max, n), 0);
+
+      state.nextId = Math.max(Number(data.nextId) || 1, maxIdNumber + 1);
+
+      state.mode = "idle";
+      state.moveExisting = null;
+      state.selectBox = null;
+      state.paletteDrag = false;
+      state.draggingPart = null;
+      state.ghost = null;
+      clearDragPreview();
+
+      render();
+    }
+
+    function exportDesign() {
+      const data = serializeDesign();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const safeDate = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      a.href = url;
+      a.download = "flow-hook-design-" + safeDate + ".json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function importDesignFromFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          loadDesignData(data);
+        } catch (err) {
+          alert("Import failed: The file is not valid JSON.");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+
+    function setupExamples() {
+      const select = $("#exampleSelect");
+      if (!select) return;
+      select.innerHTML = "";
+      const def = document.createElement("option");
+      def.value = "";
+      def.textContent = "Select Example";
+      select.appendChild(def);
+      EXAMPLES.forEach((ex, index) => {
+        const opt = document.createElement("option");
+        opt.value = String(index);
+        opt.textContent = ex.name + " · " + (ex.placed ? ex.placed.length : 0) + " Teile";
+        select.appendChild(opt);
+      });
+    }
+
+
+    function selectExampleByIndex(index) {
+      const select = $("#exampleSelect");
+      if (!select) return;
+      const max = EXAMPLES.length;
+      if (max === 0) return;
+
+      if (index < 0) index = max - 1;
+      if (index >= max) index = 0;
+
+      select.value = String(index);
+      loadSelectedExample();
+    }
+    function loadSelectedExample() {
+      const select = $("#exampleSelect");
+      if (!select || !EXAMPLES.length) return;
+      const index = Number(select.value) || 0;
+      const example = EXAMPLES[index];
+      if (!example) return;
+      loadDesignData(JSON.parse(JSON.stringify(example)));
+    }
+
+    function closeAllColorDropdowns() {
+      colorDropdowns.forEach(d => d.palette.classList.add("hidden"));
+    }
+
+    window.addEventListener("keydown", ev => {
+      if (ev.key.toLowerCase() === "r") {
+        ev.preventDefault();
+        rotateActive();
+        return;
+      }
+      if (ev.key.toLowerCase() === "d") {
+        ev.preventDefault();
+        duplicateSelected();
+        return;
+      }
+      if (ev.key.toLowerCase() === "m") {
+        ev.preventDefault();
+        mirrorSelected();
+        return;
+      }
+      const key = ev.key.toLowerCase();
+
+      if ((ev.ctrlKey || ev.metaKey) && key === "z") {
+        ev.preventDefault();
+
+        if (ev.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+
+        return;
+      }
+
+      if ((ev.ctrlKey || ev.metaKey) && key === "y") {
+        ev.preventDefault();
+        redo();
+        return;
+      }
+      if (ev.key === "Escape" && state.mode === "placing") {
+        cancelPlacing();
+      }
+      if (ev.key === "Delete" || ev.key === "Backspace") {
+        if (document.activeElement && document.activeElement.tagName === "TEXTAREA") return;
+        ev.preventDefault();
+        deleteSelected();
+      }
+    });
+
+    window.addEventListener("pointerup", ev => {
+      state.activePointers.delete(ev.pointerId);
+
+      if (state.activePointers.size === 0) {
+        state.pinch = null;
+        state.isMultiTouch = false;
+      }
+    }, true);
+
+    window.addEventListener("pointercancel", ev => {
+      state.activePointers.delete(ev.pointerId);
+
+      if (state.activePointers.size === 0) {
+        resetPointerState();
+      }
+    }, true);
+
+    window.addEventListener("blur", resetPointerState);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) resetPointerState();
+    });
+
+    $("#rotateBtn").addEventListener("click", () => rotateActive());
+    $("#rotate45Btn").addEventListener("click", () => rotateActive(45));
+    $("#duplicateBtn").addEventListener("click", duplicateSelected);
+    $("#mirrorBtn").addEventListener("click", mirrorSelected);
+    $("#undoBtn").addEventListener("click", undo);
+    $("#redoBtn").addEventListener("click", redo);
+    $("#deleteBtn").addEventListener("click", deleteSelected);
+    $("#randomBtn").addEventListener("click", generateRandomDesign);
+    $("#exampleSelect").addEventListener("change", loadSelectedExample);
+
+    $("#prevExampleBtn").addEventListener("click", () => {
+      const select = $("#exampleSelect");
+      let idx = parseInt(select.value);
+      if (isNaN(idx)) idx = 0;
+      selectExampleByIndex(idx - 1);
+    });
+
+    $("#nextExampleBtn").addEventListener("click", () => {
+      const select = $("#exampleSelect");
+      let idx = parseInt(select.value);
+      if (isNaN(idx)) idx = -1;
+      selectExampleByIndex(idx + 1);
+    });
+    $("#exportDesignBtn").addEventListener("click", exportDesign);
+    $("#importDesignBtn").addEventListener("click", () => $("#importDesignInput").click());
+    $("#importDesignInput").addEventListener("change", ev => {
+      importDesignFromFile(ev.target.files[0]);
+      ev.target.value = "";
+    });
+    $("#clearBtn").addEventListener("click", () => {
+      if (state.placed.length === 0 && state.connections.length === 0) return;
+      saveState();
+      state.placed = [];
+      state.connections = [];
+      state.selection.clear();
+      state.moveExisting = null;
+      state.selectBox = null;
+      state.mode = "idle";
+      state.paletteDrag = false;
+      state.draggingPart = null;
+      state.ghost = null;
+      clearDragPreview();
+      render();
+    });
+    $("#copyBtn").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(makeBomText());
+        $("#copyBtn").textContent = "Copied!";
+        setTimeout(() => $("#copyBtn").textContent = "Copy Parts List", 1000);
+      } catch (e) {
+        alert("Copying failed. Please select the text manually.");
+      }
+    });
+    $("#fitBtn").addEventListener("click", () => {
+      state.pan = { x: stage.clientWidth / 2, y: stage.clientHeight / 2 };
+      state.zoom = 1;
+      render();
+    });
+    $("#gridToggle").addEventListener("change", render);
+
+    setupPalette();
+    setupExamples();
+    setSelectionTool(false);
+
+    state.pan = { x: stage.clientWidth / 2, y: stage.clientHeight / 2 };
+
+    setupColorDropdown({
+      buttonId: "mainColorMenuBtn",
+      paletteId: "mainPalette",
+      pickerId: "selectedMainColorPicker",
+      previewId: "mainColorPreview",
+      getColor: () => "#a45858",
+      applyColor: color => setSelectedMainColor(color)
+    });
+
+    setupColorDropdown({
+      buttonId: "hookColorMenuBtn",
+      paletteId: "hookPalette",
+      pickerId: "selectedHookColorPicker",
+      previewId: "hookColorPreview",
+      getColor: () => "#5b3434",
+      applyColor: color => setSelectedHookColor(color)
+    });
+
+    setupColorDropdown({
+      buttonId: "globalMainColorMenuBtn",
+      paletteId: "globalMainPalette",
+      pickerId: "mainColorPicker",
+      previewId: "globalMainColorPreview",
+      getColor: () => state.mainColor,
+      applyColor: color => {
+        state.mainColor = color;
+        setupPalette();
+        render();
+      }
+    });
+
+    setupColorDropdown({
+      buttonId: "globalHookColorMenuBtn",
+      paletteId: "globalHookPalette",
+      pickerId: "hookColorPicker",
+      previewId: "globalHookColorPreview",
+      getColor: () => state.hookColor,
+      applyColor: color => {
+        state.hookColor = color;
+        setupPalette();
+        render();
+      }
+    });
+    setupMountConfigDropdown();
+
+    document.addEventListener("pointerdown", ev => {
+      const insideColorDropdown = ev.target.closest(".color-dropdown");
+      const insideFloatingPalette = ev.target.closest(".floating-palette");
+      const insideMountDropdown = ev.target.closest(".mount-dropdown");
+
+      if (
+        insideColorDropdown ||
+        insideFloatingPalette ||
+        insideMountDropdown
+      ) {
+        return;
+      }
+
+      closeAllColorDropdowns();
+    });
+
+    render();
+  </script>
+</body>
+
+</html>
